@@ -3,17 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { DocumentType } from '../api/types';
 import { DocumentTypeSelector } from '../components/scan/DocumentTypeSelector';
 import { UploadDropzone } from '../components/scan/UploadDropzone';
-import { LiveCaptureModal } from '../components/scan/LiveCaptureModal';
+import { UserImageIntake } from '../components/scan/UserImageIntake';
 import { useSubmitScan } from '../hooks/useSubmitScan';
 import {
-  Camera,
   ArrowRight,
   ShieldAlert,
   HelpCircle,
-  FileCheck,
-  CheckCircle2,
-  X,
-  Sparkles,
 } from 'lucide-react';
 
 export const NewScan: React.FC = () => {
@@ -21,7 +16,6 @@ export const NewScan: React.FC = () => {
   const [docType, setDocType] = useState<DocumentType>('passport');
   const [docFile, setDocFile] = useState<File | null>(null);
   const [liveFaceFile, setLiveFaceFile] = useState<File | null>(null);
-  const [isLiveModalOpen, setIsLiveModalOpen] = useState(false);
 
   const { mutate: submitScan, isPending, error } = useSubmitScan();
 
@@ -96,21 +90,21 @@ export const NewScan: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleLoadPreset('passport', 'Passport_Vikram_Sharma')}
-                className="text-[11px] font-mono px-2 py-0.5 rounded bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors"
+                className="text-[11px] font-mono px-2 py-0.5 rounded bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 transition-colors"
               >
                 Clean Passport
               </button>
               <button
                 type="button"
                 onClick={() => handleLoadPreset('aadhaar', 'Aadhaar_Tampered_Rajesh')}
-                className="text-[11px] font-mono px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors"
+                className="text-[11px] font-mono px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 transition-colors"
               >
                 Tampered Aadhaar
               </button>
               <button
                 type="button"
                 onClick={() => handleLoadPreset('pan', 'PAN_UnderInvestigation_Sunita')}
-                className="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition-colors"
+                className="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 transition-colors"
               >
                 Flagged PAN
               </button>
@@ -124,74 +118,17 @@ export const NewScan: React.FC = () => {
           />
         </div>
 
-        {/* Step 3: Optional Biometric Live Capture */}
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-text-primary uppercase tracking-wider font-mono">
-                Step 3: Biometric Live Capture
-              </label>
-              <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-stone-100 text-text-secondary border border-border">
-                Optional
-              </span>
-            </div>
-            <span className="text-[11px] text-text-secondary">
-              Powers Module 4 (1:1 Face Verification)
-            </span>
-          </div>
-
-          <div className="bg-surface rounded-card border border-border p-4 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-control bg-stone-100 flex items-center justify-center text-stone-600 shrink-0">
-                  <Camera size={18} />
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-text-primary">
-                    {liveFaceFile ? 'Biometric Reference Photo Attached' : 'Subject Camera Verification'}
-                  </div>
-                  <p className="text-xs text-text-secondary mt-0.5">
-                    {liveFaceFile
-                      ? `Captured frame: ${liveFaceFile.name} (${(liveFaceFile.size / 1024).toFixed(1)} KB)`
-                      : 'Capture applicant face to perform 1:1 biometric feature cosine distance verification.'}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                {liveFaceFile ? (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-medium bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
-                      <CheckCircle2 size={13} />
-                      <span>Ready</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setLiveFaceFile(null)}
-                      className="p-1 text-stone-400 hover:text-stone-700 rounded transition-colors"
-                      title="Remove capture"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsLiveModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-primary bg-stone-100 hover:bg-stone-200 rounded-control border border-border transition-colors w-full sm:w-auto justify-center"
-                  >
-                    <Camera size={14} />
-                    <span>Open Live Camera</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Step 3: Biometric Subject Photo Intake (Upload or Camera) */}
+        <UserImageIntake
+          file={liveFaceFile}
+          onFileSelect={setLiveFaceFile}
+          title="Step 3: Biometric Subject Photo"
+          subtitle="Powers Module 4 (1:1 Face Verification)"
+        />
 
         {/* Error Feedback */}
         {error && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-control flex items-center gap-2 text-xs text-rose-800">
+          <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-control flex items-center gap-2 text-xs text-rose-800 dark:text-rose-300">
             <ShieldAlert size={16} className="shrink-0" />
             <span>Failed to initiate pipeline execution: {(error as any).message || 'Server error'}</span>
           </div>
@@ -207,7 +144,7 @@ export const NewScan: React.FC = () => {
           <button
             type="submit"
             disabled={!docFile || isPending}
-            className="inline-flex items-center gap-2 px-5 py-2 text-xs font-medium text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed rounded-control transition-all shadow-xs"
+            className="inline-flex items-center gap-2 px-5 py-2 text-xs font-medium text-white bg-stone-900 hover:bg-stone-800 dark:bg-white dark:text-stone-900 dark:hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed rounded-control transition-all shadow-xs"
           >
             {isPending ? (
               <span>Submitting to Pipeline...</span>
@@ -220,13 +157,6 @@ export const NewScan: React.FC = () => {
           </button>
         </div>
       </form>
-
-      {/* Live Capture Modal */}
-      <LiveCaptureModal
-        isOpen={isLiveModalOpen}
-        onClose={() => setIsLiveModalOpen(false)}
-        onCapture={(file) => setLiveFaceFile(file)}
-      />
     </div>
   );
 };

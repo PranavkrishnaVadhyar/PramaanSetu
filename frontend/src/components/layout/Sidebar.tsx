@@ -44,7 +44,7 @@ export const Sidebar: React.FC = () => {
             </p>
           </div>
         </div>
-        <div className="mt-3 inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-stone-100 text-stone-600 border border-border w-full">
+        <div className="mt-3 inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border border-border w-full">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
           <span>OPERATIONAL UNIT · TERMINAL #04</span>
         </div>
@@ -62,14 +62,14 @@ export const Sidebar: React.FC = () => {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2 text-xs font-medium rounded-control transition-colors ${
                   isActive
-                    ? 'bg-stone-100 text-text-primary shadow-xs font-semibold'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-stone-50'
+                    ? 'bg-stone-100 dark:bg-stone-800 text-text-primary shadow-xs font-semibold'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-stone-50 dark:hover:bg-stone-800'
                 }`
               }
             >
               {({ isActive }) => (
                 <>
-                  <Icon size={16} className={isActive ? 'text-stone-900' : 'text-stone-400'} />
+                  <Icon size={16} className={isActive ? 'text-stone-900 dark:text-stone-100' : 'text-stone-400'} />
                   <span>{item.label}</span>
                 </>
               )}
@@ -79,15 +79,15 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       {/* Pipeline Engine Status Footer */}
-      <div className="p-4 border-t border-border bg-stone-50/50">
+      <div className="p-4 border-t border-border bg-stone-50/50 dark:bg-stone-900/50">
         <div className="flex items-center justify-between text-[11px] text-text-secondary mb-1">
           <span className="flex items-center gap-1.5">
             <Cpu size={13} className="text-stone-400" />
             <span>Inference Pipeline</span>
           </span>
-          <span className="font-mono text-emerald-700 font-medium">Ready</span>
+          <span className="font-mono text-emerald-700 dark:text-emerald-400 font-medium">Ready</span>
         </div>
-        <p className="text-[10px] text-stone-400 leading-normal">
+        <p className="text-[10px] text-stone-400 dark:text-stone-500 leading-normal">
           Modules 1–6 active (OCR, ELA, Face, Checksums, Risk Model)
         </p>
       </div>

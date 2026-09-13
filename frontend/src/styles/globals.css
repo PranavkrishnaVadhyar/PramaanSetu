@@ -21,6 +21,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --color-bg: #121210;
   --color-surface: #1B1A17;
   --color-border: #2D2B26;

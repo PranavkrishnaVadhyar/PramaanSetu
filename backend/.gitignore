@@ -1,0 +1,18 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Runtime uploads, generated reports, and locally provisioned OCR weights
+storage/
+models/
+*.log
+synthetic_connected_ids/

@@ -56,12 +56,12 @@ export const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({
             onClick={() => onChange(opt.type)}
             className={`text-left p-4 rounded-card border transition-all relative ${
               isSelected
-                ? 'bg-stone-50 border-stone-900 ring-1 ring-stone-900 shadow-xs'
-                : 'bg-surface border-border hover:border-stone-400 hover:bg-stone-50/50'
+                ? 'bg-stone-100 dark:bg-stone-800/80 border-stone-900 dark:border-white ring-1 ring-stone-900 dark:ring-white shadow-xs'
+                : 'bg-surface border-border hover:border-stone-400 dark:hover:border-stone-600 hover:bg-stone-50/50 dark:hover:bg-stone-800/40'
             }`}
           >
             {isSelected && (
-              <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-stone-900 text-white flex items-center justify-center">
+              <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-stone-900 dark:bg-white text-white dark:text-stone-900 flex items-center justify-center">
                 <Check size={12} strokeWidth={3} />
               </span>
             )}
@@ -69,8 +69,8 @@ export const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({
             <div
               className={`w-9 h-9 rounded-control flex items-center justify-center mb-3 ${
                 isSelected
-                  ? 'bg-stone-900 text-white'
-                  : 'bg-stone-100 text-stone-600'
+                  ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900'
+                  : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
               }`}
             >
               <Icon size={18} />
@@ -87,7 +87,7 @@ export const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({
               {opt.checks.map((c) => (
                 <span
                   key={c}
-                  className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-stone-100 text-stone-600"
+                  className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300"
                 >
                   {c}
                 </span>

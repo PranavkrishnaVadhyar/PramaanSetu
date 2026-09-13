@@ -10,7 +10,6 @@ import {
   Binary,
   UserCheck,
   ImageIcon,
-  ShieldCheck,
 } from 'lucide-react';
 
 interface EvidencePanelProps {
@@ -35,10 +34,10 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-4 flex items-center justify-between text-left hover:bg-stone-50/70 transition-colors"
+        className="w-full p-4 flex items-center justify-between text-left hover:bg-stone-50/70 dark:hover:bg-stone-800/40 transition-colors"
       >
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-control bg-stone-100 flex items-center justify-center text-stone-700">
+          <div className="w-7 h-7 rounded-control bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-stone-700 dark:text-stone-300">
             <Cpu size={15} />
           </div>
           <div>
@@ -69,8 +68,8 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({
               onClick={() => setActiveTab('ocr')}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-control transition-colors ${
                 activeTab === 'ocr'
-                  ? 'bg-stone-900 text-white'
-                  : 'bg-stone-100 text-text-secondary hover:text-text-primary'
+                  ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900'
+                  : 'bg-stone-100 dark:bg-stone-800 text-text-secondary hover:text-text-primary'
               }`}
             >
               <Scan size={13} />
@@ -82,8 +81,8 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({
               onClick={() => setActiveTab('ela')}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-control transition-colors ${
                 activeTab === 'ela'
-                  ? 'bg-stone-900 text-white'
-                  : 'bg-stone-100 text-text-secondary hover:text-text-primary'
+                  ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900'
+                  : 'bg-stone-100 dark:bg-stone-800 text-text-secondary hover:text-text-primary'
               }`}
             >
               <ImageIcon size={13} />
@@ -96,8 +95,8 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({
                 onClick={() => setActiveTab('face')}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-control transition-colors ${
                   activeTab === 'face'
-                    ? 'bg-stone-900 text-white'
-                    : 'bg-stone-100 text-text-secondary hover:text-text-primary'
+                    ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900'
+                    : 'bg-stone-100 dark:bg-stone-800 text-text-secondary hover:text-text-primary'
                 }`}
               >
                 <UserCheck size={13} />
@@ -110,8 +109,8 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({
               onClick={() => setActiveTab('raw')}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-control transition-colors ${
                 activeTab === 'raw'
-                  ? 'bg-stone-900 text-white'
-                  : 'bg-stone-100 text-text-secondary hover:text-text-primary'
+                  ? 'bg-stone-900 text-white dark:bg-white dark:text-stone-900'
+                  : 'bg-stone-100 dark:bg-stone-800 text-text-secondary hover:text-text-primary'
               }`}
             >
               <Binary size={13} />
@@ -129,7 +128,7 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({
 
               <div className="border border-border rounded-control overflow-hidden">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-stone-50 border-b border-border font-mono text-[10px] text-text-secondary uppercase">
+                  <thead className="bg-stone-50 dark:bg-stone-900/60 border-b border-border font-mono text-[10px] text-text-secondary uppercase">
                     <tr>
                       <th className="py-2 px-3 font-medium">Field Identifier</th>
                       <th className="py-2 px-3 font-medium">Extracted Value</th>
@@ -138,7 +137,7 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({
                   </thead>
                   <tbody className="divide-y divide-border">
                     {Object.entries(extractedFields).map(([key, val]) => (
-                      <tr key={key} className="hover:bg-stone-50/50 font-mono text-[11px]">
+                      <tr key={key} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/40 font-mono text-[11px]">
                         <td className="py-2.5 px-3 font-medium text-text-secondary uppercase">
                           {key.replace(/_/g, ' ')}
                         </td>
@@ -149,10 +148,10 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({
                           <span
                             className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold ${
                               val.confidence >= 0.9
-                                ? 'text-emerald-800 bg-emerald-50'
+                                ? 'text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50'
                                 : val.confidence >= 0.75
-                                ? 'text-amber-800 bg-amber-50'
-                                : 'text-rose-800 bg-rose-50'
+                                ? 'text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50'
+                                : 'text-rose-800 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50'
                             }`}
                           >
                             {formatPercentage(val.confidence)}
@@ -214,12 +213,12 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({
                 <ModuleTag module="Module 4" name="Face Net" />
               </div>
 
-              <div className="p-4 rounded-control border border-border bg-stone-50 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 rounded-control border border-border bg-stone-50 dark:bg-stone-900/40 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div className="text-xs text-text-secondary">Match Decision</div>
                   <div
                     className={`text-base font-semibold mt-1 ${
-                      faceVerification.match ? 'text-emerald-700' : 'text-rose-700'
+                      faceVerification.match ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'
                     }`}
                   >
                     {faceVerification.match ? 'BIOMETRIC MATCH CONFIRMED' : 'BIOMETRIC MISMATCH / FAILED'}

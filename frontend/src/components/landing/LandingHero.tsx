@@ -9,37 +9,37 @@ export const LandingHero: React.FC = () => {
         {/* Status Pill */}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-border">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>ENTERPRISE BORDER &amp; VERIFICATION SYSTEM</span>
+          <span>DEVELOPER API &amp; SDKs</span>
         </div>
 
         {/* Hero Title */}
         <h1 className="text-3xl sm:text-5xl md:text-6xl font-semibold tracking-tight text-text-primary leading-[1.15]">
-          AI-Powered Identity Screening &amp; <br className="hidden sm:inline" />
-          <span className="text-stone-500 dark:text-stone-400">Document Fraud Defense</span>
+          Verify Indian identity documents <br className="hidden sm:inline" />
+          <span className="text-stone-500 dark:text-stone-400">with one API call</span>
         </h1>
 
         {/* Subtitle */}
         <p className="text-sm sm:text-base text-text-secondary max-w-2xl mx-auto leading-relaxed">
-          PramaanSetu delivers military-grade forensic analysis for <strong>Indian Passports, Aadhaar Cards, and PAN</strong>. Instantly isolate synthetic manipulations, verify cryptographic checksums, and detect pixel-level compression anomalies.
+          Passport, Aadhaar, and PAN verification — OCR, authenticity checks, tampering detection, and risk scoring, built for developers.
         </p>
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <Link
-            to="/dashboard"
+            to="/signup"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 text-xs font-semibold rounded-control text-white bg-stone-900 hover:bg-stone-800 dark:bg-white dark:text-stone-900 dark:hover:bg-stone-100 transition-all shadow-xs"
           >
-            <span>Open Screening Console</span>
+            <span>Get your API key</span>
             <ArrowRight size={14} />
           </Link>
 
-          <a
-            href="#demo"
+          <Link
+            to="/console/sandbox"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-medium rounded-control text-text-primary bg-surface hover:bg-stone-100 dark:hover:bg-stone-800 border border-border transition-colors"
           >
             <Play size={13} className="text-stone-400 fill-stone-400" />
-            <span>Try Interactive Demo</span>
-          </a>
+            <span>Try it in the sandbox</span>
+          </Link>
         </div>
 
         {/* Metrics Strip */}

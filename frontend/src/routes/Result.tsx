@@ -7,6 +7,7 @@ import { IdentityRiskSection } from '../components/result/IdentityRiskSection';
 import { ReportPanel } from '../components/result/ReportPanel';
 import { EvidencePanel } from '../components/result/EvidencePanel';
 import { ActionBar } from '../components/result/ActionBar';
+import { IdentityCorrelationCard } from '../components/identity/IdentityCorrelationCard';
 import { formatDocType, formatDate, formatScanId } from '../utils/formatters';
 import { ArrowLeft, Printer, Share2, AlertCircle } from 'lucide-react';
 
@@ -101,6 +102,10 @@ export const Result: React.FC = () => {
 
       {/* 3. Identity & Watchlist Risk: Visually distinct section */}
       <IdentityRiskSection identityRisk={result.identity_risk} />
+
+      {result.identity_risk.identity_correlation && (
+        <IdentityCorrelationCard correlation={result.identity_risk.identity_correlation} />
+      )}
 
       {/* 4. LLM Narrative Audit Report with Bilingual Toggle */}
       <ReportPanel report={result.report} />

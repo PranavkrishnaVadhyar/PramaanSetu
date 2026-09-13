@@ -30,7 +30,7 @@ export const AuthenticitySection: React.FC<AuthenticitySectionProps> = ({
   ) => {
     if (val === true) {
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded">
           <CheckCircle size={12} />
           <span>{passLabel}</span>
         </span>
@@ -38,14 +38,14 @@ export const AuthenticitySection: React.FC<AuthenticitySectionProps> = ({
     }
     if (val === false) {
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-800 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">
+        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-800 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 px-2 py-0.5 rounded">
           <XCircle size={12} />
           <span>{failLabel}</span>
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 text-[11px] font-mono text-stone-400 bg-stone-100 px-2 py-0.5 rounded">
+      <span className="inline-flex items-center gap-1 text-[11px] font-mono text-stone-400 dark:text-stone-500 bg-stone-100 dark:bg-stone-800 px-2 py-0.5 rounded">
         <Minus size={11} />
         <span>{naLabel}</span>
       </span>
@@ -55,7 +55,7 @@ export const AuthenticitySection: React.FC<AuthenticitySectionProps> = ({
   return (
     <div className="bg-surface rounded-card border border-border overflow-hidden shadow-xs">
       {/* Section Header */}
-      <div className="p-4 border-b border-border bg-stone-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="p-4 border-b border-border bg-stone-50/50 dark:bg-stone-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-control bg-stone-900 text-white flex items-center justify-center">
             <FileSearch size={15} />
@@ -89,7 +89,7 @@ export const AuthenticitySection: React.FC<AuthenticitySectionProps> = ({
 
           <div className="space-y-2.5 text-xs">
             {/* MRZ (Passport) */}
-            <div className="flex items-center justify-between p-2 rounded border border-border bg-stone-50/50">
+            <div className="flex items-center justify-between p-2 rounded border border-border bg-stone-50/50 dark:bg-stone-900/30">
               <div>
                 <div className="font-medium text-text-primary">ICAO 9303 MRZ Checksum</div>
                 <div className="text-[11px] text-text-secondary">Passport Machine Readable Lines</div>
@@ -100,7 +100,7 @@ export const AuthenticitySection: React.FC<AuthenticitySectionProps> = ({
             </div>
 
             {/* Verhoeff (Aadhaar) */}
-            <div className="flex items-center justify-between p-2 rounded border border-border bg-stone-50/50">
+            <div className="flex items-center justify-between p-2 rounded border border-border bg-stone-50/50 dark:bg-stone-900/30">
               <div>
                 <div className="font-medium text-text-primary">Verhoeff Dihedral Checksum</div>
                 <div className="text-[11px] text-text-secondary">12-digit Aadhaar UID validation</div>
@@ -111,7 +111,7 @@ export const AuthenticitySection: React.FC<AuthenticitySectionProps> = ({
             </div>
 
             {/* PAN Structure */}
-            <div className="flex items-center justify-between p-2 rounded border border-border bg-stone-50/50">
+            <div className="flex items-center justify-between p-2 rounded border border-border bg-stone-50/50 dark:bg-stone-900/30">
               <div>
                 <div className="font-medium text-text-primary">PAN Standard Regex Structure</div>
                 <div className="text-[11px] text-text-secondary">5 letters, 4 digits, 1 check letter</div>
@@ -122,7 +122,7 @@ export const AuthenticitySection: React.FC<AuthenticitySectionProps> = ({
             </div>
 
             {/* Secure QR Signature */}
-            <div className="flex items-center justify-between p-2 rounded border border-border bg-stone-50/50">
+            <div className="flex items-center justify-between p-2 rounded border border-border bg-stone-50/50 dark:bg-stone-900/30">
               <div>
                 <div className="font-medium text-text-primary">Secure QR Cryptographic Signature</div>
                 <div className="text-[11px] text-text-secondary">Public key certificate attestation</div>
@@ -133,13 +133,18 @@ export const AuthenticitySection: React.FC<AuthenticitySectionProps> = ({
             </div>
 
             {/* Field Cross-Consistency */}
-            <div className="flex items-center justify-between p-2 rounded border border-border bg-stone-50/50">
+            <div className="flex items-center justify-between p-2 rounded border border-border bg-stone-50/50 dark:bg-stone-900/30">
               <div>
                 <div className="font-medium text-text-primary">OCR / Barcode Cross-Consistency</div>
                 <div className="text-[11px] text-text-secondary">Text vs Encoded Data Match</div>
               </div>
               <div>
-                {renderStatusPill(validation.field_consistency_pass, 'Consistent', 'Field Discrepancy')}
+                {renderStatusPill(
+                  validation.field_consistency_pass,
+                  'Consistent',
+                  'Field Discrepancy',
+                  'Not checked — no QR/MRZ data',
+                )}
               </div>
             </div>
           </div>
@@ -157,23 +162,23 @@ export const AuthenticitySection: React.FC<AuthenticitySectionProps> = ({
 
           <div className="space-y-3">
             {/* ELA Score Gauge */}
-            <div className="p-3 rounded border border-border bg-stone-50/50">
+            <div className="p-3 rounded border border-border bg-stone-50/50 dark:bg-stone-900/30">
               <div className="flex items-center justify-between text-xs mb-1.5">
                 <span className="font-medium text-text-primary">Error Level Analysis (ELA) Variance</span>
                 <span
                   className={`font-mono font-semibold ${
                     tampering.ela_score > 50
-                      ? 'text-rose-700'
+                      ? 'text-rose-700 dark:text-rose-400'
                       : tampering.ela_score > 25
-                      ? 'text-amber-700'
-                      : 'text-emerald-700'
+                      ? 'text-amber-700 dark:text-amber-400'
+                      : 'text-emerald-700 dark:text-emerald-400'
                   }`}
                 >
                   {tampering.ela_score.toFixed(1)} / 100
                 </span>
               </div>
 
-              <div className="w-full h-2 bg-stone-200 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full ${
                     tampering.ela_score > 50
@@ -200,7 +205,7 @@ export const AuthenticitySection: React.FC<AuthenticitySectionProps> = ({
                 Localized Tampering Regions:
               </div>
               {tampering.flagged_regions.length === 0 ? (
-                <div className="p-2 rounded bg-stone-50 text-emerald-800 text-xs flex items-center gap-1.5 border border-border">
+                <div className="p-2 rounded bg-stone-50 dark:bg-stone-900/40 text-emerald-800 dark:text-emerald-400 text-xs flex items-center gap-1.5 border border-border">
                   <CheckCircle size={13} />
                   <span>No isolated pixel anomalies detected</span>
                 </div>
@@ -209,9 +214,9 @@ export const AuthenticitySection: React.FC<AuthenticitySectionProps> = ({
                   {tampering.flagged_regions.map((region, i) => (
                     <div
                       key={i}
-                      className="p-2 rounded bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2"
+                      className="p-2 rounded bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs flex items-center gap-2"
                     >
-                      <AlertTriangle size={13} className="shrink-0 text-rose-700" />
+                      <AlertTriangle size={13} className="shrink-0 text-rose-700 dark:text-rose-400" />
                       <span>{region}</span>
                     </div>
                   ))}
@@ -225,8 +230,8 @@ export const AuthenticitySection: React.FC<AuthenticitySectionProps> = ({
                 EXIF / Metadata Anomalies:
               </div>
               {tampering.metadata_anomalies.length === 0 ? (
-                <div className="p-2 rounded bg-stone-50 text-text-secondary text-xs flex items-center gap-1.5 border border-border">
-                  <CheckCircle size={13} className="text-emerald-700" />
+                <div className="p-2 rounded bg-stone-50 dark:bg-stone-900/40 text-text-secondary text-xs flex items-center gap-1.5 border border-border">
+                  <CheckCircle size={13} className="text-emerald-700 dark:text-emerald-400" />
                   <span>Clean EXIF camera payload with natural timestamp sequence</span>
                 </div>
               ) : (
@@ -234,9 +239,9 @@ export const AuthenticitySection: React.FC<AuthenticitySectionProps> = ({
                   {tampering.metadata_anomalies.map((anom, i) => (
                     <div
                       key={i}
-                      className="p-2 rounded bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2"
+                      className="p-2 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 text-xs flex items-center gap-2"
                     >
-                      <AlertTriangle size={13} className="shrink-0 text-amber-700" />
+                      <AlertTriangle size={13} className="shrink-0 text-amber-700 dark:text-amber-400" />
                       <span className="font-mono text-[11px]">{anom}</span>
                     </div>
                   ))}

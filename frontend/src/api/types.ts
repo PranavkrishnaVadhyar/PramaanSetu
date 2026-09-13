@@ -34,7 +34,7 @@ export interface ScanResultResponse {
     qr_signature_valid: boolean | null;
     qr_field_match: boolean | null;
     pan_structure_valid: boolean | null;
-    field_consistency_pass: boolean;
+    field_consistency_pass: boolean | null;
   };
   tampering: {
     ela_score: number;
@@ -50,6 +50,7 @@ export interface ScanResultResponse {
     registry_status: 'clear' | 'blacklisted' | 'under_investigation';
     document_expired: boolean;
     issuing_authority: string;
+    identity_correlation?: IdentityCorrelationEvidence | null;
   };
   risk_model: {
     score: number; // 0-100
@@ -60,6 +61,48 @@ export interface ScanResultResponse {
     text_en: string;
     text_hi?: string;
   };
+}
+
+export type IdentityCorrelationStatus = 'anchor' | 'consistent' | 'review' | 'mismatch' | 'insufficient_data';
+
+export interface IdentityCorrelationEvidence {
+  identity_id: string;
+  name_similarity: number | null;
+  dob_match: boolean | null;
+  gender_match: boolean | null;
+  face_similarity: number | null;
+  overall_score: number | null;
+  status: Exclude<IdentityCorrelationStatus, 'anchor'>;
+  face_status: string;
+  provider: 'Mock/Synthetic Aadhaar Verification';
+}
+
+export interface AadhaarIdentityVerification {
+  provider: 'Mock/Synthetic Aadhaar Verification';
+  identity_id: string | null;
+  verified: boolean;
+  attributes: { name: string; dob: string; gender: string } | null;
+}
+
+export interface IdentityDocument {
+  scan_id: string;
+  document_type: DocumentType;
+  score: number | null;
+  status: IdentityCorrelationStatus;
+}
+
+export interface IdentityGraph {
+  identity_id: string;
+  anchor: 'synthetic_aadhaar';
+  provider: 'Mock/Synthetic Aadhaar Verification';
+  nodes: Array<{ id: string; document_type: string; status: IdentityCorrelationStatus; score: number | null }>;
+  edges: Array<{ source: string; target: string; overall_score?: number | null; score?: number | null; status: IdentityCorrelationStatus }>;
+}
+
+export interface IdentityCorrelationRecord extends Omit<IdentityCorrelationEvidence, 'identity_id' | 'provider' | 'face_status'> {
+  scan_id: string;
+  source: 'anchor';
+  target: string;
 }
 
 export interface ScanHistoryItem {
@@ -81,4 +124,18 @@ export interface OfficerActionPayload {
 export interface ActionResponse {
   ok: boolean;
   message?: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: { id: string; email: string; organization_name?: string };
+}
+
+export interface ApiKey {
+  id: string;
+  label: string;
+  environment: "test" | "live";
+  masked_value: string;
+  created_at: string;
+  last_used_at: string | null;
 }

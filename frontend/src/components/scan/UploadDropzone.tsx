@@ -88,11 +88,11 @@ export const UploadDropzone: React.FC<UploadDropzoneProps> = ({
           onClick={() => inputRef.current?.click()}
           className={`border-2 border-dashed rounded-card p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
             isDragging
-              ? 'border-stone-900 bg-stone-100/75'
-              : 'border-border bg-surface hover:border-stone-400 hover:bg-stone-50/40'
+              ? 'border-stone-900 dark:border-white bg-stone-100/75 dark:bg-stone-800/60'
+              : 'border-border bg-surface hover:border-stone-400 dark:hover:border-stone-600 hover:bg-stone-50/40 dark:hover:bg-stone-800/30'
           }`}
         >
-          <div className="w-12 h-12 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center mb-3">
+          <div className="w-12 h-12 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 flex items-center justify-center mb-3">
             <Upload size={22} />
           </div>
 
@@ -103,7 +103,7 @@ export const UploadDropzone: React.FC<UploadDropzoneProps> = ({
             Supports JPG, PNG, and WEBP. High DPI scanner or phone captures with legible text &amp; barcodes.
           </p>
 
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-primary bg-stone-100 hover:bg-stone-200 rounded-control border border-border transition-colors">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-primary bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-control border border-border transition-colors">
             <FileImage size={14} />
             <span>Select Image File</span>
           </span>
@@ -112,7 +112,7 @@ export const UploadDropzone: React.FC<UploadDropzoneProps> = ({
         <div className="bg-surface rounded-card border border-border p-4 shadow-xs">
           <div className="flex flex-col sm:flex-row items-start gap-4">
             {/* Thumbnail Preview */}
-            <div className="w-full sm:w-48 h-32 bg-stone-100 rounded-control border border-border overflow-hidden shrink-0 flex items-center justify-center relative group">
+            <div className="w-full sm:w-48 h-32 bg-stone-100 dark:bg-stone-800 rounded-control border border-border overflow-hidden shrink-0 flex items-center justify-center relative group">
               {previewUrl ? (
                 <img
                   src={previewUrl}
@@ -130,7 +130,7 @@ export const UploadDropzone: React.FC<UploadDropzoneProps> = ({
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <CheckCircle2 size={16} className="text-emerald-700 shrink-0" />
+                      <CheckCircle2 size={16} className="text-emerald-700 dark:text-emerald-400 shrink-0" />
                       <h4 className="text-sm font-semibold text-text-primary truncate max-w-xs md:max-w-md">
                         {file.name}
                       </h4>
@@ -147,14 +147,14 @@ export const UploadDropzone: React.FC<UploadDropzoneProps> = ({
                   <button
                     type="button"
                     onClick={handleClear}
-                    className="p-1.5 rounded-control text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
+                    className="p-1.5 rounded-control text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
                     title="Remove file"
                   >
                     <X size={16} />
                   </button>
                 </div>
 
-                <div className="mt-3 p-2.5 rounded-control bg-stone-50 border border-border text-xs text-text-secondary">
+                <div className="mt-3 p-2.5 rounded-control bg-stone-50 dark:bg-stone-900/50 border border-border text-xs text-text-secondary">
                   Ready for OCR text extraction, ELA compression analysis, and checksum parsing.
                 </div>
               </div>

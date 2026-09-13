@@ -35,7 +35,7 @@ export const LandingNavbar: React.FC = () => {
               PramaanSetu
             </span>
             <span className="hidden sm:inline-block ml-2 text-[10px] font-mono uppercase tracking-wider text-text-secondary">
-              ID Screening Bridge
+              Developer API
             </span>
           </div>
         </Link>
@@ -68,12 +68,11 @@ export const LandingNavbar: React.FC = () => {
             {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
           </button>
 
-          {/* Primary Action Button to Officer Console */}
           <Link
-            to="/dashboard"
+            to="/signup"
             className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-control text-white bg-stone-900 hover:bg-stone-800 dark:bg-white dark:text-stone-900 dark:hover:bg-stone-100 transition-colors shadow-xs"
           >
-            <span>Launch Console</span>
+            <span>Get your API key</span>
             <ArrowRight size={13} />
           </Link>
 
@@ -121,11 +120,11 @@ export const LandingNavbar: React.FC = () => {
           </a>
           <div className="pt-2 border-t border-border">
             <Link
-              to="/dashboard"
+              to="/signup"
               onClick={() => setMobileMenuOpen(false)}
               className="inline-flex w-full items-center justify-center gap-1.5 px-4 py-2 text-xs font-medium rounded-control text-white bg-stone-900 dark:bg-white dark:text-stone-900"
             >
-              <span>Launch Screening Console</span>
+              <span>Get your API key</span>
               <ArrowRight size={14} />
             </Link>
           </div>

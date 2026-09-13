@@ -34,11 +34,11 @@ export const ActionBar: React.FC<ActionBarProps> = ({ scanId }) => {
   };
 
   return (
-    <div className="bg-surface rounded-card border-2 border-stone-800 p-4 shadow-sm">
+    <div className="bg-surface rounded-card border-2 border-stone-800 dark:border-stone-700 p-4 shadow-sm">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Officer Authority Context */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-control bg-stone-900 text-white flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-control bg-stone-900 dark:bg-stone-800 text-white flex items-center justify-center shrink-0">
             <ShieldCheck size={18} />
           </div>
           <div>
@@ -55,8 +55,8 @@ export const ActionBar: React.FC<ActionBarProps> = ({ scanId }) => {
         <div className="flex flex-wrap items-center gap-2.5">
           {currentDecision ? (
             <div className="flex items-center gap-3">
-              <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-control bg-stone-100 border border-stone-300 text-xs font-mono font-medium">
-                <Check size={14} className="text-emerald-700" />
+              <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-control bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-xs font-mono font-medium">
+                <Check size={14} className="text-emerald-700 dark:text-emerald-400" />
                 <span>
                   DECISION: <span className="font-bold uppercase text-text-primary">{currentDecision}</span>
                 </span>
@@ -77,7 +77,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({ scanId }) => {
                 type="button"
                 disabled={isSubmitting}
                 onClick={() => handleAction('clear')}
-                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-control text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 transition-colors shadow-2xs"
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-control text-emerald-900 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-950/60 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 border border-emerald-300 dark:border-emerald-800 transition-colors shadow-2xs"
               >
                 <CheckCircle size={15} />
                 <span>Clear / Approve Entry</span>
@@ -88,7 +88,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({ scanId }) => {
                 type="button"
                 disabled={isSubmitting}
                 onClick={() => handleAction('review')}
-                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-control text-amber-950 bg-amber-100 hover:bg-amber-200 border border-amber-300 transition-colors shadow-2xs"
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-control text-amber-950 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/60 hover:bg-amber-200 dark:hover:bg-amber-900/60 border border-amber-300 dark:border-amber-800 transition-colors shadow-2xs"
               >
                 <AlertTriangle size={15} />
                 <span>Flag for Manual Inspection</span>
@@ -99,7 +99,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({ scanId }) => {
                 type="button"
                 disabled={isSubmitting}
                 onClick={() => handleAction('escalate')}
-                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-control text-white bg-rose-700 hover:bg-rose-800 border border-rose-800 transition-colors shadow-2xs"
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-control text-white bg-rose-700 hover:bg-rose-800 dark:bg-rose-800 dark:hover:bg-rose-700 border border-rose-800 dark:border-rose-700 transition-colors shadow-2xs"
               >
                 <AlertOctagon size={15} />
                 <span>Escalate to Supervisor</span>

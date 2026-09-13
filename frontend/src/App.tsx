@@ -2,12 +2,15 @@ import React from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LanguageProvider } from './context/LanguageContext';
-import { AppShell } from './components/layout/AppShell';
-import { Dashboard } from './routes/Dashboard';
-import { NewScan } from './routes/NewScan';
-import { Processing } from './routes/Processing';
-import { Result } from './routes/Result';
-import { History } from './routes/History';
+import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider } from './context/AuthContext';
+import { RequireAuth } from './components/auth/RequireAuth';
+import { ConsoleShell } from './components/layout/ConsoleShell';
+import { LandingPage } from './routes/LandingPage';
+import { Login } from './routes/Login';
+import { Signup } from './routes/Signup';
+import { Sandbox } from './routes/console/Sandbox';
+import { Developer } from './routes/console/Developer';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,42 +24,54 @@ const queryClient = new QueryClient({
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <AppShell />,
+    element: <LandingPage />,
+  },
+  {
+    path: '/login',
+    element: <Login />,
+  },
+  {
+    path: '/signup',
+    element: <Signup />,
+  },
+  {
+    path: '/console',
+    element: (
+      <RequireAuth>
+        <ConsoleShell />
+      </RequireAuth>
+    ),
     children: [
       {
+        path: 'sandbox',
+        element: <Sandbox />,
+      },
+      {
+        path: 'developer',
+        element: <Developer />,
+      },
+      {
         index: true,
-        element: <Dashboard />,
-      },
-      {
-        path: 'scan/new',
-        element: <NewScan />,
-      },
-      {
-        path: 'scan/:scanId/processing',
-        element: <Processing />,
-      },
-      {
-        path: 'scan/:scanId/result',
-        element: <Result />,
-      },
-      {
-        path: 'history',
-        element: <History />,
-      },
-      {
-        path: '*',
-        element: <Navigate to="/" replace />,
-      },
-    ],
+        element: <Navigate to="/console/sandbox" replace />,
+      }
+    ]
+  },
+  {
+    path: '*',
+    element: <Navigate to="/" replace />,
   },
 ]);
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <LanguageProvider>
-        <RouterProvider router={router} />
-      </LanguageProvider>
+      <ThemeProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <RouterProvider router={router} />
+          </AuthProvider>
+        </LanguageProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

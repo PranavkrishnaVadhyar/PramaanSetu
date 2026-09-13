@@ -34,7 +34,7 @@ export const ScanSearchBar: React.FC<ScanSearchBarProps> = ({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search by subject name or scan ID (e.g. Vikram, scn-78103)..."
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-control border border-border bg-stone-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-stone-900 transition-colors"
+            className="w-full pl-9 pr-3 py-2 text-xs rounded-control border border-border bg-stone-50 dark:bg-stone-900 focus:bg-white dark:focus:bg-stone-800 text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-600 transition-colors"
           />
         </div>
 
@@ -43,7 +43,7 @@ export const ScanSearchBar: React.FC<ScanSearchBarProps> = ({
           <select
             value={selectedDocType}
             onChange={(e) => onDocTypeChange(e.target.value)}
-            className="w-full px-3 py-2 text-xs rounded-control border border-border bg-stone-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-stone-900 text-text-primary"
+            className="w-full px-3 py-2 text-xs rounded-control border border-border bg-stone-50 dark:bg-stone-900 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-600 text-text-primary transition-colors"
           >
             <option value="all">All Document Types</option>
             <option value="passport">Passport Only</option>
@@ -57,7 +57,7 @@ export const ScanSearchBar: React.FC<ScanSearchBarProps> = ({
           <select
             value={selectedBand}
             onChange={(e) => onBandChange(e.target.value)}
-            className="w-full px-3 py-2 text-xs rounded-control border border-border bg-stone-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-stone-900 text-text-primary"
+            className="w-full px-3 py-2 text-xs rounded-control border border-border bg-stone-50 dark:bg-stone-900 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-600 text-text-primary transition-colors"
           >
             <option value="all">All Risk Bands</option>
             <option value="high">High Risk Only</option>

@@ -6,10 +6,34 @@ import {
   OfficerAction,
   ActionResponse,
   PipelineStage,
+  AuthResponse,
+  ApiKey,
+  AadhaarIdentityVerification,
+  IdentityCorrelationEvidence,
+  IdentityDocument,
+  IdentityGraph,
+  IdentityCorrelationRecord,
 } from './types';
 import { MOCK_HISTORY, MOCK_RESULTS } from './mockData';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+/** A response from the API was received, but it was not successful. */
+class ApiResponseError extends Error {
+  constructor(public readonly status: number) {
+    super(`HTTP error ${status}`);
+    this.name = 'ApiResponseError';
+  }
+}
+
+function getAuthHeaders(extraHeaders: Record<string, string> = {}): HeadersInit {
+  const token = localStorage.getItem('pramaansetu_token');
+  const headers: Record<string, string> = { ...extraHeaders };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
 
 // In-memory simulation state for new scans created during session
 const localSimulatedScans = new Map<string, {
@@ -40,12 +64,16 @@ export async function submitScan(submission: ScanSubmission): Promise<{ scan_id:
   try {
     const res = await fetch(`${BASE_URL}/api/scans`, {
       method: 'POST',
+      headers: getAuthHeaders(),
       body: formData,
     });
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    if (!res.ok) throw new ApiResponseError(res.status);
     const data = await res.json();
     return data;
-  } catch {
+  } catch (error) {
+    // A server response (for example 401/422/500) is a real failure, not an
+    // offline condition. Never fabricate a scan in that case.
+    if (error instanceof ApiResponseError) throw error;
     // Fallback simulation for offline / standalone execution
     const randomSuffix = Math.random().toString(36).substring(2, 6);
     const newScanId = `scn-${Date.now().toString().slice(-5)}-${randomSuffix}`;
@@ -66,10 +94,15 @@ export async function submitScan(submission: ScanSubmission): Promise<{ scan_id:
 
 export async function getScanStatus(scanId: string): Promise<ScanStatusResponse> {
   try {
-    const res = await fetch(`${BASE_URL}/api/scans/${scanId}/status`);
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const res = await fetch(`${BASE_URL}/api/scans/${scanId}/status`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new ApiResponseError(res.status);
     return await res.json();
-  } catch {
+  } catch (error) {
+    // In particular, preserve 425 Too Early so callers wait for the pipeline
+    // instead of displaying a generated result.
+    if (error instanceof ApiResponseError) throw error;
     // Fallback simulation based on elapsed time (approx 1s per stage)
     const sim = localSimulatedScans.get(scanId);
     if (!sim) {
@@ -99,10 +132,14 @@ export async function getScanStatus(scanId: string): Promise<ScanStatusResponse>
 
 export async function getScanResult(scanId: string): Promise<ScanResultResponse> {
   try {
-    const res = await fetch(`${BASE_URL}/api/scans/${scanId}/result`);
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const res = await fetch(`${BASE_URL}/api/scans/${scanId}/result`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new ApiResponseError(res.status);
     return await res.json();
-  } catch {
+  } catch (error) {
+    // Never replace a real API error (including 425 Too Early) with mock data.
+    if (error instanceof ApiResponseError) throw error;
     // Check pre-seeded mock results
     if (MOCK_RESULTS[scanId]) {
       return MOCK_RESULTS[scanId];
@@ -178,7 +215,9 @@ export async function getScanHistory(params?: {
     if (params?.from) query.append('from', params.from);
     if (params?.to) query.append('to', params.to);
 
-    const res = await fetch(`${BASE_URL}/api/scans?${query.toString()}`);
+    const res = await fetch(`${BASE_URL}/api/scans?${query.toString()}`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
   } catch {
@@ -221,7 +260,7 @@ export async function submitOfficerAction(
   try {
     const res = await fetch(`${BASE_URL}/api/scans/${scanId}/action`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ action, notes }),
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -231,5 +270,158 @@ export async function submitOfficerAction(
       ok: true,
       message: `Action '${action}' recorded for scan ${scanId}`,
     };
+  }
+}
+
+async function authenticate(
+  endpoint: 'login' | 'signup',
+  payload: Record<string, string | undefined>,
+): Promise<AuthResponse> {
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/api/auth/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error('Unable to reach the authentication service. Please try again.');
+  }
+
+  const body: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    const detail =
+      body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string'
+        ? body.detail
+        : `Authentication failed (HTTP ${res.status}).`;
+    throw new Error(detail);
+  }
+
+  if (
+    !body || typeof body !== 'object' ||
+    !('token' in body) || typeof body.token !== 'string' || !body.token ||
+    !('user' in body) || !body.user || typeof body.user !== 'object' ||
+    !('id' in body.user) || typeof body.user.id !== 'string' ||
+    !('email' in body.user) || typeof body.user.email !== 'string'
+  ) {
+    throw new Error('Authentication service returned an invalid response.');
+  }
+
+  return body as AuthResponse;
+}
+
+export function login(email: string, password: string): Promise<AuthResponse> {
+  return authenticate('login', { email, password });
+}
+
+export function signup(
+  email: string,
+  password: string,
+  organization_name?: string,
+): Promise<AuthResponse> {
+  return authenticate('signup', { email, password, organization_name });
+}
+
+async function identityRequest<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers: getAuthHeaders({ 'Content-Type': 'application/json', ...(options?.headers as Record<string, string> || {}) }),
+  });
+  const body: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    const detail = body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string'
+      ? body.detail : `Identity service request failed (HTTP ${res.status}).`;
+    throw new Error(detail);
+  }
+  return body as T;
+}
+
+export function verifyAadhaarIdentity(aadhaarNumber: string): Promise<AadhaarIdentityVerification> {
+  return identityRequest('/api/identity/aadhaar/verify', { method: 'POST', body: JSON.stringify({ aadhaar_number: aadhaarNumber }) });
+}
+
+export function correlateDocument(scanId: string, identityId: string): Promise<IdentityCorrelationEvidence & { scan_id: string; document_type: DocumentType }> {
+  return identityRequest(`/api/identity/correlate/${encodeURIComponent(scanId)}`, { method: 'POST', body: JSON.stringify({ identity_id: identityId }) });
+}
+
+export function getIdentity(identityId: string): Promise<AadhaarIdentityVerification> {
+  return identityRequest(`/api/identity/${encodeURIComponent(identityId)}`);
+}
+
+export function getIdentityDocuments(identityId: string): Promise<IdentityDocument[]> {
+  return identityRequest(`/api/identity/${encodeURIComponent(identityId)}/documents`);
+}
+
+export function getIdentityGraph(identityId: string): Promise<IdentityGraph> {
+  return identityRequest(`/api/identity/${encodeURIComponent(identityId)}/graph`);
+}
+
+export function getIdentityCorrelations(identityId: string): Promise<IdentityCorrelationRecord[]> {
+  return identityRequest(`/api/identity/${encodeURIComponent(identityId)}/correlations`);
+}
+
+export async function getKeys(): Promise<ApiKey[]> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/keys`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch {
+    return [
+      {
+        id: 'key-1',
+        label: 'Test Environment',
+        environment: 'test',
+        masked_value: 'sk_test_••••••3f2a',
+        created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
+        last_used_at: new Date().toISOString(),
+      },
+      {
+        id: 'key-2',
+        label: 'Production',
+        environment: 'live',
+        masked_value: 'sk_live_••••••8b19',
+        created_at: new Date(Date.now() - 86400000 * 30).toISOString(),
+        last_used_at: null,
+      },
+    ];
+  }
+}
+
+export async function createKey(label: string, environment: "test" | "live"): Promise<ApiKey & { full_value: string }> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/keys`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ label, environment }),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch {
+    const randomSuffix = Math.random().toString(36).substring(2, 6);
+    const full_value = `sk_${environment}_mock${randomSuffix}`;
+    return {
+      id: `key-${Date.now()}`,
+      label,
+      environment,
+      masked_value: `sk_${environment}_••••••${randomSuffix}`,
+      created_at: new Date().toISOString(),
+      last_used_at: null,
+      full_value,
+    };
+  }
+}
+
+export async function deleteKey(id: string): Promise<{ ok: boolean }> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/keys/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch {
+    return { ok: true };
   }
 }

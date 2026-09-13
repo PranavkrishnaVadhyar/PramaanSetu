@@ -33,7 +33,7 @@ export const TopBar: React.FC = () => {
         {/* Link back to Public Landing Page */}
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono rounded-control border border-border bg-stone-50 dark:bg-stone-850 hover:bg-stone-100 dark:hover:bg-stone-800 text-text-secondary hover:text-text-primary transition-colors"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono rounded-control border border-border bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-text-secondary hover:text-text-primary transition-colors"
           title="Back to Landing Page"
         >
           <Home size={13} className="text-stone-400" />
@@ -43,7 +43,7 @@ export const TopBar: React.FC = () => {
         {/* Theme Toggle Button */}
         <button
           onClick={toggleTheme}
-          className="p-1.5 rounded-control border border-border bg-stone-50 dark:bg-stone-850 hover:bg-stone-100 dark:hover:bg-stone-800 text-text-secondary hover:text-text-primary transition-colors"
+          className="p-1.5 rounded-control border border-border bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-text-secondary hover:text-text-primary transition-colors"
           title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
         >
           {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
@@ -52,7 +52,7 @@ export const TopBar: React.FC = () => {
         {/* Language Switcher */}
         <button
           onClick={toggleLanguage}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono rounded-control border border-border bg-stone-50 dark:bg-stone-850 hover:bg-stone-100 dark:hover:bg-stone-800 text-text-secondary transition-colors"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono rounded-control border border-border bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-text-secondary transition-colors"
           title="Toggle Language / भाषा बदलें"
         >
           <Globe size={13} className="text-stone-400" />
@@ -61,7 +61,7 @@ export const TopBar: React.FC = () => {
         </button>
 
         {/* Officer Active Badge */}
-        <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-control bg-stone-100 dark:bg-stone-850 border border-border text-text-secondary">
+        <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-control bg-stone-100 dark:bg-stone-800 border border-border text-text-secondary">
           <UserCheck size={13} className="text-stone-500" />
           <span className="font-mono text-[11px]">OFFICER #8412</span>
         </div>

@@ -1,0 +1,43 @@
+# Core framework
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Database
+sqlalchemy[asyncio]
+asyncpg
+alembic
+
+# Validation & Settings
+pydantic
+pydantic-settings
+python-dotenv
+
+# OCR & Image Processing
+# PP-OCRv5 Mobile runs locally. Provision its weights into PADDLE_OCR_MODEL_DIR
+# during deployment; the application never downloads OCR model files at scan time.
+paddlepaddle>=3.0.0
+paddleocr>=3.0.0
+huggingface_hub>=0.24.0
+Pillow
+opencv-python-headless
+numpy
+
+# QR Code Decoding
+pyzbar
+
+# Face Verification
+deepface
+
+# HTTP Client (async, for HF fallback)
+httpx
+
+# ML / Risk Model
+scikit-learn==1.6.1
+joblib
+xgboost
+
+
+# Utilities
+python-jose[cryptography]
+passlib[bcrypt]

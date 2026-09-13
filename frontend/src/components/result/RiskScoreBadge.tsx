@@ -77,17 +77,17 @@ export const RiskScoreBadge: React.FC<RiskScoreBadgeProps> = ({ score, topFeatur
         {/* Operational Guideline Text */}
         <div className="text-xs text-text-secondary max-w-sm">
           {score <= 30 && (
-            <p className="font-medium text-emerald-900">
+            <p className="font-medium text-emerald-900 dark:text-emerald-200">
               Low probability of synthetic anomaly. Document exhibits standard algorithmic checksums and valid cryptographic signatures.
             </p>
           )}
           {score > 30 && score <= 65 && (
-            <p className="font-medium text-amber-900">
+            <p className="font-medium text-amber-900 dark:text-amber-200">
               Elevated suspicion. One or more metadata inconsistencies or registry watchlist flags require secondary physical verification.
             </p>
           )}
           {score > 65 && (
-            <p className="font-medium text-rose-950">
+            <p className="font-medium text-rose-950 dark:text-rose-200">
               Critical fraud alert. Structural tampering, checksum invalidation, or active blacklist enforcement detected. Do not clear without escalation.
             </p>
           )}
@@ -106,7 +106,7 @@ export const RiskScoreBadge: React.FC<RiskScoreBadgeProps> = ({ score, topFeatur
             {topFeatures.map((feature, idx) => (
               <li
                 key={idx}
-                className="text-xs flex items-start gap-2 text-text-primary font-mono bg-surface/75 p-2 rounded border border-black/5"
+                className="text-xs flex items-start gap-2 text-text-primary font-mono bg-surface/75 dark:bg-surface/50 p-2 rounded border border-black/5 dark:border-white/10"
               >
                 <span className="text-text-secondary font-sans font-medium text-[11px] shrink-0">
                   {idx + 1}.
