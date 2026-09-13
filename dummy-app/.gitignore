@@ -1,0 +1,5 @@
+# Never commit browser/client secrets or local runtime data.
+.env
+.env.*
+!.env.example
+*.log

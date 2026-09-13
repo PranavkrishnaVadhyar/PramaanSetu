@@ -18,6 +18,12 @@ import { MOCK_HISTORY, MOCK_RESULTS } from './mockData';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
+/** Resolve a backend path for browser rendering (for example, evidence images). */
+export function resolveApiUrl(pathOrUrl: string): string {
+  if (/^(?:https?:|data:|blob:)/i.test(pathOrUrl)) return pathOrUrl;
+  return `${BASE_URL}${pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`}`;
+}
+
 /** A response from the API was received, but it was not successful. */
 class ApiResponseError extends Error {
   constructor(public readonly status: number) {

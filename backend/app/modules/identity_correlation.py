@@ -6,9 +6,12 @@ intended only for the project's synthetic/demo identity provider.
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import unicodedata
 from difflib import SequenceMatcher
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from app.config import get_settings
@@ -97,15 +100,43 @@ def compare_identity_fields(anchor: dict[str, Any], document: dict[str, Any]) ->
 # Hash lookup prevents the mock provider from using an Aadhaar number as an
 # application identity key or returning it in an API response. This value is a
 # synthetic demo credential only.
-_MOCK_PROFILES = {
+# Retained for backwards compatibility with the original one-card demo.
+_LEGACY_MOCK_PROFILES = {
     hashlib.sha256(b"177589178390").hexdigest(): {
         "identity_id": "ID-8F92A1", "name": "AYAAN BALA", "dob": "1988-11-19", "gender": "M",
     },
 }
 
 
+@lru_cache(maxsize=1)
+def _synthetic_profiles() -> dict[str, dict[str, str]]:
+    """Load only the checked-in synthetic dataset; never query a real provider."""
+    profiles = dict(_LEGACY_MOCK_PROFILES)
+    backend_root = Path(__file__).resolve().parents[2]
+    dataset_root = backend_root / "pramaansetu_synthetic_dataset"
+
+    for person_file in dataset_root.glob("person_*/person.json"):
+        try:
+            person = json.loads(person_file.read_text(encoding="utf-8"))
+            aadhaar = re.sub(r"\D", "", str(person.get("aadhaar", "")))
+            if len(aadhaar) != 12:
+                continue
+            person_id = str(person.get("person_id", person_file.parent.name)).upper().replace("_", "-")
+            profiles[hashlib.sha256(aadhaar.encode()).hexdigest()] = {
+                "identity_id": f"PS-DATA-{person_id}",
+                "name": str(person.get("name", "")),
+                "dob": str(person.get("dob", "")),
+                "gender": str(person.get("gender", "")),
+            }
+        except (OSError, ValueError, TypeError) as exc:
+            # A malformed demo record must not make identity verification
+            # accept arbitrary numbers or prevent other valid records loading.
+            continue
+    return profiles
+
+
 def verify_mock_aadhaar(aadhaar_number: str) -> dict[str, Any] | None:
     normalized = re.sub(r"\D", "", aadhaar_number)
     if len(normalized) != 12:
         return None
-    return _MOCK_PROFILES.get(hashlib.sha256(normalized.encode()).hexdigest())
+    return _synthetic_profiles().get(hashlib.sha256(normalized.encode()).hexdigest())

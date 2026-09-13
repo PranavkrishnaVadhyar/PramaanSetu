@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ScanResultResponse } from '../../api/types';
 import { ModuleTag } from '../shared/ModuleTag';
 import { formatPercentage } from '../../utils/formatters';
+import { resolveApiUrl } from '../../api/client';
 import {
   ChevronDown,
   ChevronUp,
@@ -177,7 +178,7 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({
                 {tampering.ela_heatmap_url ? (
                   <div className="w-full flex flex-col items-center">
                     <img
-                      src={tampering.ela_heatmap_url}
+                      src={resolveApiUrl(tampering.ela_heatmap_url)}
                       alt="Error Level Analysis Heatmap"
                       className="max-h-72 object-contain border border-stone-800 rounded"
                     />

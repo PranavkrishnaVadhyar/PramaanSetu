@@ -16,3 +16,4 @@ storage/
 models/
 *.log
 synthetic_connected_ids/
+pramaansetu_synthetic_dataset/

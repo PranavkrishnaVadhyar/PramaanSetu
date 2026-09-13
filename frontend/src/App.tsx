@@ -11,6 +11,7 @@ import { Login } from './routes/Login';
 import { Signup } from './routes/Signup';
 import { Sandbox } from './routes/console/Sandbox';
 import { Developer } from './routes/console/Developer';
+import { ApiReference } from './routes/console/ApiReference';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -49,6 +50,10 @@ const router = createBrowserRouter([
       {
         path: 'developer',
         element: <Developer />,
+      },
+      {
+        path: 'reference',
+        element: <ApiReference />,
       },
       {
         index: true,

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A local demo client for the PramaanSetu document-screening API." />
+    <title>VerifyFlow — Applicant Document Check</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div class="brand"><span class="brand-mark">✓</span><span>VerifyFlow</span></div>
+        <span class="badge">Powered by PramaanSetu</span>
+        <h1>Verify an applicant document.</h1>
+        <p>Submit an identity document for local-first fraud screening before approving onboarding.</p>
+      </header>
+
+      <section class="card" aria-labelledby="connection-title">
+        <div class="section-heading"><div><span class="eyebrow">01 · Connection</span><h2 id="connection-title">Connect to PramaanSetu</h2></div><span id="connection-status" class="status neutral">Not connected</span></div>
+        <form id="connection-form" class="connection-grid">
+          <label>API base URL<input id="api-base-url" type="url" value="http://localhost:8000" required /></label>
+          <label>API key<input id="api-key" type="password" autocomplete="off" placeholder="sk_test_…" /></label>
+          <span class="or">or</span>
+          <label>Email<input id="email" type="email" autocomplete="email" placeholder="you@example.com" /></label>
+          <label>Password<input id="password" type="password" autocomplete="current-password" placeholder="Your password" /></label>
+          <button class="secondary" type="submit">Sign in with email</button>
+        </form>
+        <p class="help">Use either an API key or email/password. Credentials stay in this browser session and are never written into this app’s source files.</p>
+      </section>
+
+      <section class="card" aria-labelledby="screen-title">
+        <div class="section-heading"><div><span class="eyebrow">02 · Screen document</span><h2 id="screen-title">Applicant submission</h2></div></div>
+        <form id="scan-form" class="scan-form">
+          <div class="document-options" role="radiogroup" aria-label="Document type">
+            <label><input type="radio" name="document_type" value="aadhaar" checked /><span>Aadhaar <small>Synthetic demo only</small></span></label>
+            <label><input type="radio" name="document_type" value="pan" /><span>PAN</span></label>
+            <label><input type="radio" name="document_type" value="passport" /><span>Passport</span></label>
+          </div>
+          <div class="file-grid">
+            <label class="dropzone">Document image <input id="document-image" type="file" accept="image/png,image/jpeg,image/webp" required /><span id="document-file-label">Choose PNG, JPG, or WEBP</span></label>
+            <label class="dropzone">Applicant selfie <small>Optional, for face verification</small><input id="selfie-image" type="file" accept="image/png,image/jpeg,image/webp" /><span id="selfie-file-label">Choose optional selfie</span></label>
+          </div>
+          <button id="submit-scan" class="primary" type="submit">Run document check <span>→</span></button>
+        </form>
+      </section>
+
+      <section id="progress-card" class="card hidden" aria-live="polite">
+        <div class="section-heading"><div><span class="eyebrow">03 · Processing</span><h2>Verification in progress</h2></div><span id="scan-id" class="mono"></span></div>
+        <ol id="stages" class="stages"></ol>
+        <p id="progress-message" class="help">Uploading and preparing your screening request…</p>
+      </section>
+
+      <section id="result-card" class="card hidden" aria-live="polite">
+        <div class="section-heading"><div><span class="eyebrow">04 · Decision support</span><h2>Screening result</h2></div><span id="risk-badge" class="risk"></span></div>
+        <div id="result-summary" class="result-summary"></div>
+        <div class="result-grid">
+          <article><h3>Extracted fields</h3><dl id="fields-list" class="key-values"></dl></article>
+          <article><h3>Validation</h3><dl id="validation-list" class="key-values"></dl></article>
+          <article><h3>Forensic checks</h3><dl id="forensic-list" class="key-values"></dl><img id="heatmap" class="heatmap hidden" alt="Error Level Analysis heatmap" /></article>
+        </div>
+        <article class="report"><h3>Automated assessment</h3><p id="report-text"></p></article>
+        <details><summary>Raw API response</summary><pre id="raw-response"></pre></details>
+      </section>
+
+      <p id="error-message" class="error hidden" role="alert"></p>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

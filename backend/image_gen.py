@@ -1,163 +1,288 @@
-
-"""
-PRAMAANSETU - CONNECTED SYNTHETIC ID DATASET GENERATOR
-=======================================================
-
-Creates synthetic identity-document datasets for testing
-PramaanSetu's:
-
-    - OCR
-    - document validation
-    - tamper detection
-    - face verification
-    - cross-document identity correlation
-    - risk scoring
-
-IMPORTANT:
-These are fictional TEST documents.
-They are NOT Aadhaar, PAN cards, passports, or government IDs.
-
-Each person gets one folder containing documents that share
-the same synthetic identity attributes.
-
-Output structure:
-
-synthetic_connected_ids/
-│
-├── person_001/
-│   ├── identity.json
-│   ├── aadhaar_test.png
-│   ├── passport_test.png
-│   ├── pan_test.png
-│   ├── passport_tampered.png
-│   └── pan_tampered.png
-│
-├── person_002/
-│   ├── identity.json
-│   ├── aadhaar_test.png
-│   ├── passport_test.png
-│   ├── pan_test.png
-│   └── ...
-│
-└── dataset_manifest.csv
-
-Install:
-
-pip install pillow faker qrcode opencv-python
-"""
-
 from pathlib import Path
-from datetime import date, timedelta
-import csv
 import json
+import shutil
+import zipfile
+import re
+import math
 import random
-import string
-import hashlib
-
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
-from faker import Faker
-import qrcode
-
 
 # ============================================================
 # CONFIGURATION
 # ============================================================
 
-NUM_PEOPLE = 50
+OUTPUT_DIR = Path("pramaansetu_synthetic_dataset")
+ZIP_NAME = Path("pramaansetu_synthetic_dataset.zip")
 
-OUTPUT_DIR = Path("synthetic_connected_ids")
+IMAGE_WIDTH = 1400
+IMAGE_HEIGHT = 900
 
-# Same dimensions as the previous generator
-WIDTH = 1200
-HEIGHT = 760
+# Optional dependencies used for image generation:
+#
+#   pip install pillow qrcode
+#
+# The script also works without qrcode: it will create the
+# document images but omit the QR code.
+#
+try:
+    from PIL import Image, ImageDraw, ImageFont, ImageFilter
+except ImportError:
+    raise SystemExit(
+        "Pillow is required for image generation.\n"
+        "Install it with: pip install pillow"
+    )
 
-random.seed(42)
-fake = Faker("en_IN")
-
-FONT_DIR = Path("C:/Windows/Fonts")
+try:
+    import qrcode
+except ImportError:
+    qrcode = None
 
 
 # ============================================================
-# FONTS
+# SYNTHETIC PEOPLE
 # ============================================================
 
-def get_font(size, bold=False):
+PEOPLE = [
+    {
+        "id": "person_001",
+        "name": "ARJUN MENON",
+        "dob": "14/02/1998",
+        "gender": "M",
+        "nationality": "INDIAN",
+        "address": "42 SYNTHETIC PARK ROAD, KERALA",
+        "pan": "ABCPM4821K",
+        "scenario": "clean",
+    },
+    {
+        "id": "person_002",
+        "name": "ANANYA NAIR",
+        "dob": "23/07/1999",
+        "gender": "F",
+        "nationality": "INDIAN",
+        "address": "18 DIGITAL VALLEY, KERALA",
+        "pan": "BQWPN5736R",
+        "scenario": "clean",
+    },
+    {
+        "id": "person_003",
+        "name": "ROHAN PILLAI",
+        "dob": "09/11/1997",
+        "gender": "M",
+        "nationality": "INDIAN",
+        "address": "7 TEST COLONY ROAD, KERALA",
+        "pan": "CRTPP6842M",
+        "scenario": "clean",
+    },
+    {
+        "id": "person_004",
+        "name": "MEERA KRISHNAN",
+        "dob": "31/01/2000",
+        "gender": "F",
+        "nationality": "INDIAN",
+        "address": "55 INNOVATION STREET, KERALA",
+        "pan": "DLMKR7519T",
+        "scenario": "aadhaar_mismatch_tampered",
+    },
+    {
+        "id": "person_005",
+        "name": "VIVEK VARMA",
+        "dob": "05/06/1996",
+        "gender": "M",
+        "nationality": "INDIAN",
+        "address": "91 STARTUP AVENUE, KERALA",
+        "pan": "EFGVA3264P",
+        "scenario": "passport_mrz_and_pan_invalid",
+    },
+]
 
-    if bold:
-        candidates = [
-            FONT_DIR / "arialbd.ttf",
-            FONT_DIR / "segoeuib.ttf",
+
+# ============================================================
+# VERHOEFF
+# ============================================================
+
+D = [
+    [0,1,2,3,4,5,6,7,8,9],
+    [1,2,3,4,0,6,7,8,9,5],
+    [2,3,4,0,1,7,8,9,5,6],
+    [3,4,0,1,2,8,9,5,6,7],
+    [4,0,1,2,3,9,5,6,7,8],
+    [5,9,8,7,6,0,4,3,2,1],
+    [6,5,9,8,7,1,0,4,3,2],
+    [7,6,5,9,8,2,1,0,4,3],
+    [8,7,6,5,9,3,2,1,0,4],
+    [9,8,7,6,5,4,3,2,1,0],
+]
+
+P = [
+    [0,1,2,3,4,5,6,7,8,9],
+    [1,5,7,6,2,8,3,0,9,4],
+    [5,8,0,3,7,9,6,1,4,2],
+    [8,9,1,6,0,4,3,5,2,7],
+    [9,4,5,3,1,2,6,8,7,0],
+    [4,2,8,6,5,7,3,9,0,1],
+    [2,7,9,3,8,0,6,4,1,5],
+    [7,0,4,6,9,1,3,2,5,8],
+]
+
+INV = [0,4,3,2,1,5,6,7,8,9]
+
+
+def verhoeff_check_digit(number):
+    c = 0
+    for i, digit in enumerate(reversed(str(number))):
+        c = D[c][P[(i + 1) % 8][int(digit)]]
+    return INV[c]
+
+
+def verhoeff_valid(number):
+    c = 0
+    for i, digit in enumerate(reversed(str(number))):
+        c = D[c][P[i % 8][int(digit)]]
+    return c == 0
+
+
+def generate_aadhaar(seed):
+    base = f"{seed:011d}"
+    number = base + str(verhoeff_check_digit(base))
+    assert len(number) == 12
+    assert verhoeff_valid(number)
+    return number
+
+
+# ============================================================
+# PASSPORT MRZ
+# ============================================================
+
+def mrz_character_value(character):
+    if character == "<":
+        return 0
+    if character.isdigit():
+        return int(character)
+    if "A" <= character <= "Z":
+        return ord(character) - ord("A") + 10
+    raise ValueError(f"Invalid MRZ character: {character}")
+
+
+def mrz_check_digit(value):
+    weights = [7, 3, 1]
+    total = 0
+    for index, character in enumerate(value):
+        total += (
+            mrz_character_value(character)
+            * weights[index % 3]
+        )
+    return str(total % 10)
+
+
+def generate_passport(person, index):
+    passport_number = f"T{index:07d}"
+    passport_field = passport_number + "<"
+
+    day, month, year = person["dob"].split("/")
+    dob_mrz = year[-2:] + month + day
+
+    expiry_mrz = f"{35 + index:02d}1215"
+
+    passport_cd = mrz_check_digit(passport_field)
+    dob_cd = mrz_check_digit(dob_mrz)
+    expiry_cd = mrz_check_digit(expiry_mrz)
+
+    name_parts = person["name"].split()
+    surname = name_parts[-1]
+    given_names = name_parts[:-1]
+
+    mrz_name = surname
+    if given_names:
+        mrz_name += "<<" + "<".join(given_names)
+
+    line1 = ("P<IND" + mrz_name)[:44].ljust(44, "<")
+
+    optional_data = "<" * 14
+
+    composite_data = (
+        passport_field
+        + passport_cd
+        + dob_mrz
+        + dob_cd
+        + expiry_mrz
+        + expiry_cd
+        + optional_data
+    )
+
+    composite_cd = mrz_check_digit(composite_data)
+
+    line2 = (
+        passport_field
+        + passport_cd
+        + "IND"
+        + dob_mrz
+        + dob_cd
+        + person["gender"]
+        + expiry_mrz
+        + expiry_cd
+        + optional_data
+        + composite_cd
+    )
+
+    line2 = line2[:44].ljust(44, "<")
+
+    assert len(line1) == 44
+    assert len(line2) == 44
+
+    return {
+        "passport_number": passport_number,
+        "mrz_line_1": line1,
+        "mrz_line_2": line2,
+        "passport_number_check_digit": passport_cd,
+        "dob_check_digit": dob_cd,
+        "expiry_check_digit": expiry_cd,
+        "composite_check_digit": composite_cd,
+    }
+
+
+# ============================================================
+# PAN
+# ============================================================
+
+PAN_PATTERN = re.compile(r"^[A-Z]{5}[0-9]{4}[A-Z]$")
+
+
+def pan_valid(pan):
+    return bool(PAN_PATTERN.fullmatch(pan))
+
+
+# ============================================================
+# FONT HELPERS
+# ============================================================
+
+def load_font(size, bold=False, mono=False):
+    candidates = []
+
+    if mono:
+        candidates += [
+            "C:/Windows/Fonts/consola.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        ]
+    elif bold:
+        candidates += [
+            "C:/Windows/Fonts/arialbd.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         ]
     else:
-        candidates = [
-            FONT_DIR / "arial.ttf",
-            FONT_DIR / "segoeui.ttf",
+        candidates += [
+            "C:/Windows/Fonts/arial.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         ]
 
-    for font in candidates:
-        if font.exists():
-            return ImageFont.truetype(str(font), size)
+    for path in candidates:
+        if Path(path).exists():
+            return ImageFont.truetype(path, size=size)
 
     return ImageFont.load_default()
 
 
-FONT_TITLE = get_font(38, True)
-FONT_HEADER = get_font(28, True)
-FONT_LABEL = get_font(21, True)
-FONT_TEXT = get_font(25)
-FONT_SMALL = get_font(18)
-FONT_MRZ = get_font(22)
-
-
-# ============================================================
-# GENERAL HELPERS
-# ============================================================
-
-def random_digits(length):
-
-    return "".join(
-        random.choice(string.digits)
-        for _ in range(length)
-    )
-
-
-def random_letters(length):
-
-    return "".join(
-        random.choice(string.ascii_uppercase)
-        for _ in range(length)
-    )
-
-
-def random_date():
-
-    start = date(1970, 1, 1)
-    end = date(2005, 12, 31)
-
-    days = (end - start).days
-
-    return start + timedelta(
-        days=random.randint(0, days)
-    )
-
-
-def future_date():
-
-    start = date.today() + timedelta(days=365)
-
-    end = date.today() + timedelta(days=3650)
-
-    days = (end - start).days
-
-    return start + timedelta(
-        days=random.randint(0, days)
-    )
-
-
-def rounded_box(draw, box, radius=20, fill=None, outline=(60, 60, 60), width=2):
-
+def rounded_rectangle(draw, xy, radius, fill, outline=None, width=1):
     draw.rounded_rectangle(
-        box,
+        xy,
         radius=radius,
         fill=fill,
         outline=outline,
@@ -165,987 +290,1034 @@ def rounded_box(draw, box, radius=20, fill=None, outline=(60, 60, 60), width=2):
     )
 
 
-def add_outer_border(draw):
-
-    draw.rounded_rectangle(
-        (10, 10, WIDTH - 10, HEIGHT - 10),
-        radius=25,
-        outline=(50, 50, 50),
-        width=5,
-    )
-
-
 # ============================================================
-# SYNTHETIC FACE GENERATION
+# SYNTHETIC FACE IMAGE
 # ============================================================
 
-def generate_face(seed_text):
-
+def create_person_image(person, output_path, seed):
     """
-    Creates a deterministic fictional face.
+    Creates a deterministic synthetic illustrated portrait.
 
-    The same seed always produces the same face,
-    allowing the same person to have the same face
-    across multiple synthetic documents.
+    It is intentionally an illustration rather than a realistic
+    photograph so that the dataset cannot be mistaken for a
+    real person's biometric photograph.
     """
 
-    seed = int(
-        hashlib.sha256(
-            seed_text.encode("utf-8")
-        ).hexdigest(),
-        16,
-    )
+    random.seed(seed)
 
-    rng = random.Random(seed)
-
-    img = Image.new(
-        "RGB",
-        (280, 340),
-        (220, 220, 220),
-    )
-
+    width, height = 700, 900
+    img = Image.new("RGB", (width, height), (235, 238, 242))
     draw = ImageDraw.Draw(img)
 
     # Background
-    bg = (
-        rng.randint(185, 235),
-        rng.randint(185, 235),
-        rng.randint(185, 235),
-    )
-
     draw.rectangle(
-        (0, 0, 280, 340),
-        fill=bg,
+        [0, 0, width, height],
+        fill=(235, 238, 242)
     )
 
-    # Skin
-    skin = (
-        rng.randint(150, 220),
-        rng.randint(100, 180),
-        rng.randint(80, 150),
-    )
-
-    hair = (
-        rng.randint(20, 70),
-        rng.randint(20, 70),
-        rng.randint(20, 70),
-    )
-
-    shirt = (
-        rng.randint(40, 100),
-        rng.randint(50, 120),
-        rng.randint(80, 150),
-    )
-
-    # Shoulders
+    # Simple shoulders
     draw.ellipse(
-        (30, 225, 250, 450),
-        fill=shirt,
+        [120, 610, 580, 1030],
+        fill=(80, 105, 135)
     )
 
     # Neck
     draw.rectangle(
-        (105, 180, 175, 255),
-        fill=skin,
+        [285, 500, 415, 700],
+        fill=(198, 151, 118)
     )
 
     # Face
+    skin_variants = [
+        (198, 151, 118),
+        (216, 170, 135),
+        (181, 132, 103),
+        (205, 157, 124),
+    ]
+
+    skin = random.choice(skin_variants)
+
     draw.ellipse(
-        (65, 40, 215, 225),
+        [185, 130, 515, 575],
         fill=skin,
+        outline=(90, 70, 60),
+        width=3
     )
 
     # Hair
-    draw.pieslice(
-        (60, 20, 220, 150),
-        180,
-        360,
-        fill=hair,
+    hair = random.choice([
+        (35, 30, 28),
+        (55, 40, 30),
+        (25, 25, 25),
+    ])
+
+    draw.ellipse(
+        [175, 80, 525, 330],
+        fill=hair
     )
 
     # Eyes
+    eye_y = 330
+
     draw.ellipse(
-        (95, 110, 110, 125),
-        fill=(20, 20, 20),
+        [255, eye_y, 285, eye_y + 20],
+        fill=(25, 25, 25)
     )
 
     draw.ellipse(
-        (170, 110, 185, 125),
-        fill=(20, 20, 20),
+        [415, eye_y, 445, eye_y + 20],
+        fill=(25, 25, 25)
     )
 
     # Nose
     draw.line(
-        (140, 125, 130, 165, 145, 170),
-        fill=(100, 70, 60),
-        width=3,
+        [350, 345, 330, 420, 365, 425],
+        fill=(110, 80, 65),
+        width=5
     )
 
     # Mouth
     draw.arc(
-        (115, 155, 165, 195),
-        0,
-        180,
-        fill=(90, 30, 30),
-        width=3,
+        [305, 425, 395, 475],
+        start=10,
+        end=170,
+        fill=(100, 55, 55),
+        width=4
     )
 
-    return img
+    # Ears
+    draw.ellipse(
+        [160, 320, 205, 420],
+        fill=skin
+    )
+
+    draw.ellipse(
+        [495, 320, 540, 420],
+        fill=skin
+    )
+
+    # Synthetic label
+    font = load_font(28, bold=True)
+
+    text = "SYNTHETIC TEST PERSON"
+
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw = bbox[2] - bbox[0]
+
+    draw.text(
+        ((width - tw) / 2, 30),
+        text,
+        fill=(60, 65, 70),
+        font=font
+    )
+
+    # Person ID
+    small = load_font(22)
+
+    draw.text(
+        (20, height - 45),
+        person["id"],
+        fill=(80, 80, 80),
+        font=small
+    )
+
+    img.save(output_path, quality=95)
 
 
 # ============================================================
-# QR GENERATION
+# SYNTHETIC AADHAAR IMAGE
 # ============================================================
 
-def generate_test_qr(identity):
+def create_aadhaar_image(person, aadhaar_number, qr_payload, output_path, face_path):
+    width, height = 1200, 760
 
-    payload = (
-        "PRAMAANSETU-TEST|"
-        f"ID={identity['identity_id']}|"
-        f"NAME={identity['name']}|"
-        f"DOB={identity['dob']}|"
-        f"GENDER={identity['gender']}"
+    img = Image.new(
+        "RGB",
+        (width, height),
+        (247, 250, 245)
     )
 
-    qr = qrcode.QRCode(
-        version=3,
-        box_size=5,
-        border=2,
+    draw = ImageDraw.Draw(img)
+
+    title_font = load_font(42, bold=True)
+    subtitle_font = load_font(24, bold=True)
+    label_font = load_font(22, bold=True)
+    value_font = load_font(29)
+    uid_font = load_font(38, bold=True, mono=True)
+
+    # Border
+    draw.rectangle(
+        [8, 8, width - 8, height - 8],
+        outline=(70, 110, 80),
+        width=5
     )
 
-    qr.add_data(payload)
-    qr.make(fit=True)
-
-    return qr.make_image(
-        fill_color="black",
-        back_color="white",
-    ).convert("RGB")
-
-
-# ============================================================
-# IDENTITY GENERATION
-# ============================================================
-
-def generate_identity(index):
-
-    first_name = fake.first_name()
-    last_name = fake.last_name()
-
-    name = (
-        f"{first_name} {last_name}"
-    ).upper()
-
-    father_name = (
-        fake.first_name_male()
-        + " "
-        + last_name
-    ).upper()
-
-    dob = random_date()
-
-    gender = random.choice(
-        ["M", "F"]
+    # Header
+    draw.rectangle(
+        [12, 12, width - 12, 120],
+        fill=(226, 239, 226)
     )
 
-    identity_id = (
-        f"PS-ID-{index:04d}"
+    draw.text(
+        (40, 30),
+        "PRAMAANSETU",
+        fill=(35, 80, 45),
+        font=title_font
     )
 
-    # Synthetic identifiers.
-    # These are deliberately not real government IDs.
-    synthetic_resident_id = (
-        "TEST-"
-        + random_digits(12)
+    draw.text(
+        (42, 82),
+        "SYNTHETIC RESIDENT ID — TEST ONLY",
+        fill=(65, 90, 70),
+        font=subtitle_font
     )
 
-    synthetic_tax_id = (
-        random_letters(5)
-        + random_digits(4)
-        + random_letters(1)
-    )
+    # Photo
+    face = Image.open(face_path).convert("RGB")
+    face.thumbnail((230, 290))
 
-    synthetic_passport_id = (
-        "TEST-P-"
-        + random_digits(7)
-    )
-
-    return {
-        "identity_id": identity_id,
-        "name": name,
-        "father_name": father_name,
-        "dob": dob.strftime("%d/%m/%Y"),
-        "gender": gender,
-        "nationality": "INDIAN",
-
-        "synthetic_resident_id":
-            synthetic_resident_id,
-
-        "synthetic_tax_id":
-            synthetic_tax_id,
-
-        "synthetic_passport_id":
-            synthetic_passport_id,
-
-        "face_seed":
-            identity_id,
-    }
-
-
-# ============================================================
-# COMMON HEADER
-# ============================================================
-
-def draw_header(
-    image,
-    title,
-    subtitle,
-):
-
-    draw = ImageDraw.Draw(image)
-
-    add_outer_border(draw)
+    photo_x, photo_y = 50, 170
 
     draw.rectangle(
-        (20, 20, WIDTH - 20, 115),
-        fill=(40, 80, 115),
+        [
+            photo_x - 5,
+            photo_y - 5,
+            photo_x + 240,
+            photo_y + 300
+        ],
+        fill=(225, 225, 225),
+        outline=(90, 90, 90),
+        width=3
     )
 
-    draw.text(
-        (45, 40),
-        "PRAMAANSETU TEST AUTHORITY",
-        font=FONT_TITLE,
-        fill=(255, 255, 255),
+    img.paste(
+        face.resize((230, 290)),
+        (photo_x, photo_y)
     )
 
-    draw.text(
-        (45, 130),
-        title,
-        font=FONT_HEADER,
-        fill=(40, 80, 115),
-    )
-
-    draw.text(
-        (45, 165),
-        subtitle,
-        font=FONT_SMALL,
-        fill=(80, 80, 80),
-    )
-
-
-# ============================================================
-# PASSPORT-LIKE TEST DOCUMENT
-# ============================================================
-
-def create_passport(identity, output_path):
-
-    image = Image.new(
-        "RGB",
-        (WIDTH, HEIGHT),
-        (245, 248, 252),
-    )
-
-    draw_header(
-        image,
-        "SYNTHETIC TRAVEL ID - TEST",
-        "Fictional identity document for software testing",
-    )
-
-    draw = ImageDraw.Draw(image)
+    # Fields
+    x = 340
+    y = 175
 
     fields = [
-        ("FULL NAME", identity["name"]),
-        (
-            "TEST DOCUMENT NUMBER",
-            identity["synthetic_passport_id"],
-        ),
-        (
-            "NATIONALITY",
-            identity["nationality"],
-        ),
-        (
-            "DATE OF BIRTH",
-            identity["dob"],
-        ),
-        (
-            "GENDER",
-            identity["gender"],
-        ),
-        (
-            "EXPIRY DATE",
-            future_date().strftime("%d/%m/%Y"),
-        ),
+        ("NAME", person["name"]),
+        ("DATE OF BIRTH", person["dob"]),
+        ("GENDER", person["gender"]),
+        ("NATIONALITY", person["nationality"]),
+        ("ADDRESS", person["address"]),
     ]
-
-    y = 225
 
     for label, value in fields:
 
         draw.text(
-            (55, y),
+            (x, y),
             label,
-            font=FONT_LABEL,
-            fill=(40, 40, 40),
+            fill=(75, 75, 75),
+            font=label_font
+        )
+
+        y += 32
+
+        draw.text(
+            (x, y),
+            value,
+            fill=(25, 25, 25),
+            font=value_font
+        )
+
+        y += 65
+
+    # Aadhaar-like number
+    formatted_uid = (
+        f"{aadhaar_number[:4]} "
+        f"{aadhaar_number[4:8]} "
+        f"{aadhaar_number[8:]}"
+    )
+
+    draw.text(
+        (50, 590),
+        "TEST RESIDENT NUMBER",
+        fill=(75, 75, 75),
+        font=label_font
+    )
+
+    draw.text(
+        (50, 625),
+        formatted_uid,
+        fill=(25, 25, 25),
+        font=uid_font
+    )
+
+    # QR
+    if qrcode is not None:
+
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=7,
+            border=3,
+        )
+
+        qr.add_data(
+            json.dumps(
+                qr_payload,
+                separators=(",", ":")
+            )
+        )
+
+        qr.make(fit=True)
+
+        qr_img = qr.make_image(
+            fill_color="black",
+            back_color="white"
+        ).convert("RGB")
+
+        qr_img.thumbnail((190, 190))
+
+        img.paste(
+            qr_img,
+            (940, 150)
         )
 
         draw.text(
-            (330, y),
+            (960, 345),
+            "SYNTHETIC QR",
+            fill=(70, 70, 70),
+            font=label_font
+        )
+
+    draw.text(
+        (50, 710),
+        "FICTIONAL DOCUMENT FOR PRAMAANSETU TESTING",
+        fill=(120, 120, 120),
+        font=load_font(18, bold=True)
+    )
+
+    img.save(output_path, quality=95)
+
+
+# ============================================================
+# SYNTHETIC PAN IMAGE
+# ============================================================
+
+def create_pan_image(person, output_path, face_path, pan_value=None):
+    width, height = 1000, 630
+
+    img = Image.new(
+        "RGB",
+        (width, height),
+        (246, 246, 242)
+    )
+
+    draw = ImageDraw.Draw(img)
+
+    title_font = load_font(35, bold=True)
+    label_font = load_font(21, bold=True)
+    value_font = load_font(29)
+    pan_font = load_font(42, bold=True, mono=True)
+
+    draw.rectangle(
+        [8, 8, width - 8, height - 8],
+        outline=(65, 75, 85),
+        width=5
+    )
+
+    draw.text(
+        (40, 35),
+        "PRAMAANSETU — PAN TEST CARD",
+        fill=(30, 45, 60),
+        font=title_font
+    )
+
+    draw.text(
+        (40, 90),
+        "SYNTHETIC / TEST ONLY",
+        fill=(130, 60, 60),
+        font=label_font
+    )
+
+    # Photo
+    face = Image.open(face_path).convert("RGB")
+    face.thumbnail((210, 260))
+
+    draw.rectangle(
+        [50, 160, 270, 430],
+        outline=(80, 80, 80),
+        width=3
+    )
+
+    img.paste(
+        face.resize((210, 260)),
+        (55, 165)
+    )
+
+    x = 330
+
+    draw.text(
+        (x, 175),
+        "NAME",
+        fill=(80, 80, 80),
+        font=label_font
+    )
+
+    draw.text(
+        (x, 210),
+        person["name"],
+        fill=(25, 25, 25),
+        font=value_font
+    )
+
+    draw.text(
+        (x, 285),
+        "PAN",
+        fill=(80, 80, 80),
+        font=label_font
+    )
+
+    draw.text(
+        (x, 320),
+        pan_value or person["pan"],
+        fill=(25, 25, 25),
+        font=pan_font
+    )
+
+    draw.text(
+        (x, 400),
+        "DATE OF BIRTH",
+        fill=(80, 80, 80),
+        font=label_font
+    )
+
+    draw.text(
+        (x, 435),
+        person["dob"],
+        fill=(25, 25, 25),
+        font=value_font
+    )
+
+    draw.text(
+        (50, 555),
+        "FICTIONAL DOCUMENT FOR PRAMAANSETU TESTING",
+        fill=(120, 120, 120),
+        font=load_font(18, bold=True)
+    )
+
+    img.save(output_path, quality=95)
+
+
+# ============================================================
+# SYNTHETIC PASSPORT IMAGE
+# ============================================================
+
+def create_passport_image(person, passport, output_path, face_path):
+    width, height = 1200, 800
+
+    img = Image.new(
+        "RGB",
+        (width, height),
+        (238, 244, 250)
+    )
+
+    draw = ImageDraw.Draw(img)
+
+    title_font = load_font(38, bold=True)
+    label_font = load_font(20, bold=True)
+    value_font = load_font(27)
+    mrz_font = load_font(28, mono=True)
+
+    draw.rectangle(
+        [8, 8, width - 8, height - 8],
+        outline=(45, 75, 110),
+        width=5
+    )
+
+    draw.rectangle(
+        [12, 12, width - 12, 120],
+        fill=(222, 233, 245)
+    )
+
+    draw.text(
+        (40, 35),
+        "PRAMAANSETU",
+        fill=(35, 65, 105),
+        font=title_font
+    )
+
+    draw.text(
+        (42, 82),
+        "SYNTHETIC PASSPORT — TEST ONLY",
+        fill=(65, 85, 105),
+        font=label_font
+    )
+
+    # Passport photo
+    face = Image.open(face_path).convert("RGB")
+
+    draw.rectangle(
+        [55, 165, 335, 490],
+        outline=(80, 80, 80),
+        width=3
+    )
+
+    img.paste(
+        face.resize((270, 320)),
+        (60, 170)
+    )
+
+    # Information
+    x = 390
+
+    fields = [
+        ("SURNAME / GIVEN NAMES", person["name"]),
+        ("PASSPORT NUMBER", passport["passport_number"]),
+        ("NATIONALITY", "IND"),
+        ("DATE OF BIRTH", person["dob"]),
+        ("SEX", person["gender"]),
+    ]
+
+    y = 175
+
+    for label, value in fields:
+
+        draw.text(
+            (x, y),
+            label,
+            fill=(80, 80, 80),
+            font=label_font
+        )
+
+        y += 30
+
+        draw.text(
+            (x, y),
             value,
-            font=FONT_TEXT,
-            fill=(20, 20, 20),
+            fill=(25, 25, 25),
+            font=value_font
         )
 
         y += 60
 
-    # Photo
-    photo = generate_face(
-        identity["face_seed"]
-    )
-
-    photo = photo.resize(
-        (220, 270)
-    )
-
-    image.paste(
-        photo,
-        (900, 180),
-    )
-
-    # Synthetic machine-readable area
+    # MRZ
     draw.rectangle(
-        (45, 590, 1155, 705),
-        outline=(90, 90, 90),
-        width=2,
-    )
-
-    line1 = (
-        f"TEST<{identity['name'].replace(' ', '<')}"
-    )
-
-    line2 = (
-        f"{identity['synthetic_passport_id']}"
-        f"<<TEST"
-        f"{identity['dob'].replace('/', '')}"
+        [35, 550, width - 35, 735],
+        fill=(225, 225, 225),
+        outline=(100, 100, 100),
+        width=2
     )
 
     draw.text(
-        (65, 615),
-        line1[:72],
-        font=FONT_MRZ,
+        (55, 570),
+        passport["mrz_line_1"],
         fill=(20, 20, 20),
+        font=mrz_font
     )
 
     draw.text(
-        (65, 655),
-        line2[:72],
-        font=FONT_MRZ,
+        (55, 625),
+        passport["mrz_line_2"],
         fill=(20, 20, 20),
-    )
-
-    image.save(
-        output_path,
-        quality=95,
-    )
-
-
-# ============================================================
-# AADHAAR-LIKE TEST DOCUMENT
-# ============================================================
-
-def create_aadhaar(identity, output_path):
-
-    image = Image.new(
-        "RGB",
-        (WIDTH, HEIGHT),
-        (255, 255, 255),
-    )
-
-    draw_header(
-        image,
-        "SYNTHETIC RESIDENT ID - TEST",
-        "Fictional resident identity document for testing",
-    )
-
-    draw = ImageDraw.Draw(image)
-
-    # Synthetic resident identifier
-    uid = identity[
-        "synthetic_resident_id"
-    ]
-
-    draw.text(
-        (55, 220),
-        "TEST RESIDENT NUMBER",
-        font=FONT_LABEL,
-        fill=(50, 50, 50),
+        font=mrz_font
     )
 
     draw.text(
-        (55, 260),
-        uid,
-        font=FONT_HEADER,
-        fill=(30, 30, 30),
+        (55, 700),
+        "FICTIONAL DOCUMENT FOR PRAMAANSETU TESTING",
+        fill=(120, 120, 120),
+        font=load_font(16, bold=True)
     )
 
-    fields = [
-        ("NAME", identity["name"]),
-        ("DATE OF BIRTH", identity["dob"]),
-        ("GENDER", identity["gender"]),
-        ("NATIONALITY", identity["nationality"]),
-        (
-            "ADDRESS",
-            "123 SYNTHETIC TEST ROAD, KERALA",
-        ),
-    ]
-
-    y = 340
-
-    for label, value in fields:
-
-        draw.text(
-            (55, y),
-            label,
-            font=FONT_LABEL,
-            fill=(50, 50, 50),
-        )
-
-        draw.text(
-            (290, y),
-            value,
-            font=FONT_TEXT,
-            fill=(20, 20, 20),
-        )
-
-        y += 55
-
-    # Photo
-    photo = generate_face(
-        identity["face_seed"]
-    )
-
-    photo = photo.resize(
-        (220, 270)
-    )
-
-    image.paste(
-        photo,
-        (900, 155),
-    )
-
-    # QR
-    qr = generate_test_qr(identity)
-
-    qr = qr.resize(
-        (210, 210)
-    )
-
-    image.paste(
-        qr,
-        (900, 465),
-    )
-
-    image.save(
-        output_path,
-        quality=95,
-    )
+    img.save(output_path, quality=95)
 
 
 # ============================================================
-# PAN-LIKE TEST DOCUMENT
+# TEST SCENARIOS / NEGATIVE DOCUMENTS
 # ============================================================
 
-def create_pan(identity, output_path):
+def make_invalid_verhoeff_number(valid_number: str) -> str:
+    """Change one digit while keeping a 12-digit shape but breaking Verhoeff."""
+    digits = list(valid_number)
+    for i in range(11):
+        original = digits[i]
+        digits[i] = "0" if original != "0" else "1"
+        candidate = "".join(digits)
+        if not verhoeff_valid(candidate):
+            return candidate
+        digits[i] = original
+    raise RuntimeError("Could not create invalid Verhoeff test number")
 
-    image = Image.new(
-        "RGB",
-        (WIDTH, HEIGHT),
-        (240, 245, 250),
-    )
 
-    draw_header(
-        image,
-        "SYNTHETIC TAX ID - TEST",
-        "Fictional tax identity document for testing",
-    )
+def make_invalid_mrz(passport: dict) -> dict:
+    """Flip the final composite MRZ check digit without changing the fields."""
+    out = dict(passport)
+    line2 = list(out["mrz_line_2"])
+    original = line2[43]
+    line2[43] = "0" if original != "0" else "1"
+    out["mrz_line_2"] = "".join(line2)
+    return out
 
-    draw = ImageDraw.Draw(image)
 
-    fields = [
-        (
-            "TEST TAX IDENTIFIER",
-            identity["synthetic_tax_id"],
-        ),
-        (
-            "NAME",
-            identity["name"],
-        ),
-        (
-            "FATHER'S NAME",
-            identity["father_name"],
-        ),
-        (
-            "DATE OF BIRTH",
-            identity["dob"],
-        ),
-    ]
+def make_invalid_pan(pan: str) -> str:
+    """Return a deliberately structurally invalid PAN-like value."""
+    return pan[:9] + "7"
 
-    y = 235
 
-    for label, value in fields:
+def add_aadhaar_tamper_overlay(image_path: Path) -> None:
+    """Add a visible synthetic edit near the printed identifier.
 
-        draw.text(
-            (55, y),
-            label,
-            font=FONT_LABEL,
-            fill=(40, 40, 40),
-        )
-
-        draw.text(
-            (370, y),
-            value,
-            font=FONT_TEXT,
-            fill=(20, 20, 20),
-        )
-
-        y += 75
-
-    # Photo
-    photo = generate_face(
-        identity["face_seed"]
-    )
-
-    photo = photo.resize(
-        (220, 270)
-    )
-
-    image.paste(
-        photo,
-        (900, 185),
-    )
-
-    # Signature
-    draw.line(
-        (70, 585, 350, 585),
-        fill=(50, 50, 50),
-        width=3,
-    )
-
-    draw.text(
-        (70, 605),
-        "TEST SIGNATURE",
-        font=FONT_SMALL,
-        fill=(60, 60, 60),
-    )
-
-    image.save(
-        output_path,
-        quality=95,
-    )
+    This is intentionally obvious enough for the tampering module to flag,
+    while leaving the QR code and face untouched.
+    """
+    img = Image.open(image_path).convert("RGB")
+    draw = ImageDraw.Draw(img)
+    w, h = img.size
+    x1, y1, x2, y2 = int(w * 0.035), int(h * 0.765), int(w * 0.52), int(h * 0.88)
+    draw.rectangle([x1, y1, x2, y2], fill=(247, 250, 245))
+    draw.rectangle([x1, y1, x2, y2], outline=(180, 70, 70), width=3)
+    draw.text((x1 + 12, y1 + 12), "EDITED TEST VALUE", fill=(170, 50, 50), font=load_font(22, bold=True))
+    img.save(image_path, quality=95)
 
 
 # ============================================================
-# TAMPERING HELPERS
+# JSON
 # ============================================================
 
-def tamper_passport_name(
-    source,
-    destination,
-):
-
-    image = Image.open(source).convert("RGB")
-
-    draw = ImageDraw.Draw(image)
-
-    # Cover original name
-    draw.rectangle(
-        (320, 220, 820, 265),
-        fill=(245, 248, 252),
-    )
-
-    draw.text(
-        (330, 225),
-        "RAHUL KUMAR",
-        font=FONT_TEXT,
-        fill=(20, 20, 20),
-    )
-
-    image.save(
-        destination,
-        quality=95,
-    )
-
-
-def tamper_pan_name(
-    source,
-    destination,
-):
-
-    image = Image.open(source).convert("RGB")
-
-    draw = ImageDraw.Draw(image)
-
-    draw.rectangle(
-        (370, 305, 850, 350),
-        fill=(240, 245, 250),
-    )
-
-    draw.text(
-        (380, 310),
-        "RAHUL KUMAR",
-        font=FONT_TEXT,
-        fill=(20, 20, 20),
-    )
-
-    image.save(
-        destination,
-        quality=95,
-    )
-
-
-def tamper_aadhaar_qr(
-    source,
-    destination,
-):
-
-    image = Image.open(source).convert("RGB")
-
-    qr = generate_test_qr(
-        {
-            "identity_id": "INVALID",
-            "name": "DIFFERENT PERSON",
-            "dob": "01/01/1990",
-            "gender": "X",
-        }
-    )
-
-    qr = qr.resize(
-        (210, 210)
-    )
-
-    image.paste(
-        qr,
-        (900, 465),
-    )
-
-    image.save(
-        destination,
-        quality=95,
-    )
-
-
-def tamper_photo(
-    source,
-    destination,
-    different_seed,
-):
-
-    image = Image.open(source).convert("RGB")
-
-    replacement = generate_face(
-        different_seed
-    )
-
-    replacement = replacement.resize(
-        (220, 270)
-    )
-
-    # Same photo position across all documents
-    image.paste(
-        replacement,
-        (900, 180),
-    )
-
-    image.save(
-        destination,
-        quality=95,
-    )
-
-
-# ============================================================
-# PERSON DATASET
-# ============================================================
-
-def create_person_dataset(index):
-
-    identity = generate_identity(index)
-
-    person_dir = (
-        OUTPUT_DIR
-        / f"person_{index:03d}"
-    )
-
-    person_dir.mkdir(
+def write_json(path, data):
+    path.parent.mkdir(
         parents=True,
-        exist_ok=True,
+        exist_ok=True
     )
 
-    # --------------------------------------------------------
-    # Identity JSON
-    # --------------------------------------------------------
-
-    identity_json = {
-        **identity,
-        "documents": {
-            "aadhaar_test": "aadhaar_test.png",
-            "passport_test": "passport_test.png",
-            "pan_test": "pan_test.png",
-        },
-    }
-
-    with open(
-        person_dir / "identity.json",
-        "w",
-        encoding="utf-8",
-    ) as f:
-
-        json.dump(
-            identity_json,
-            f,
+    path.write_text(
+        json.dumps(
+            data,
             indent=2,
-        )
-
-    # --------------------------------------------------------
-    # Genuine documents
-    # --------------------------------------------------------
-
-    aadhaar_path = (
-        person_dir
-        / "aadhaar_test.png"
+            ensure_ascii=False
+        ),
+        encoding="utf-8"
     )
-
-    passport_path = (
-        person_dir
-        / "passport_test.png"
-    )
-
-    pan_path = (
-        person_dir
-        / "pan_test.png"
-    )
-
-    create_aadhaar(
-        identity,
-        aadhaar_path,
-    )
-
-    create_passport(
-        identity,
-        passport_path,
-    )
-
-    create_pan(
-        identity,
-        pan_path,
-    )
-
-    # --------------------------------------------------------
-    # Tampered documents
-    # --------------------------------------------------------
-
-    tamper_passport_name(
-        passport_path,
-        person_dir
-        / "passport_tampered_name.png",
-    )
-
-    tamper_pan_name(
-        pan_path,
-        person_dir
-        / "pan_tampered_name.png",
-    )
-
-    tamper_aadhaar_qr(
-        aadhaar_path,
-        person_dir
-        / "aadhaar_tampered_qr.png",
-    )
-
-    tamper_photo(
-        passport_path,
-        person_dir
-        / "passport_tampered_photo.png",
-        identity["identity_id"]
-        + "-different-face",
-    )
-
-    # --------------------------------------------------------
-    # Manifest entries
-    # --------------------------------------------------------
-
-    records = []
-
-    records.extend([
-        {
-            "person_id":
-                identity["identity_id"],
-            "document_type":
-                "aadhaar",
-            "filename":
-                "aadhaar_test.png",
-            "is_tampered":
-                0,
-            "tamper_type":
-                "none",
-        },
-        {
-            "person_id":
-                identity["identity_id"],
-            "document_type":
-                "passport",
-            "filename":
-                "passport_test.png",
-            "is_tampered":
-                0,
-            "tamper_type":
-                "none",
-        },
-        {
-            "person_id":
-                identity["identity_id"],
-            "document_type":
-                "pan",
-            "filename":
-                "pan_test.png",
-            "is_tampered":
-                0,
-            "tamper_type":
-                "none",
-        },
-        {
-            "person_id":
-                identity["identity_id"],
-            "document_type":
-                "passport",
-            "filename":
-                "passport_tampered_name.png",
-            "is_tampered":
-                1,
-            "tamper_type":
-                "name_modification",
-        },
-        {
-            "person_id":
-                identity["identity_id"],
-            "document_type":
-                "passport",
-            "filename":
-                "passport_tampered_photo.png",
-            "is_tampered":
-                1,
-            "tamper_type":
-                "photo_swap",
-        },
-        {
-            "person_id":
-                identity["identity_id"],
-            "document_type":
-                "pan",
-            "filename":
-                "pan_tampered_name.png",
-            "is_tampered":
-                1,
-            "tamper_type":
-                "name_modification",
-        },
-        {
-            "person_id":
-                identity["identity_id"],
-            "document_type":
-                "aadhaar",
-            "filename":
-                "aadhaar_tampered_qr.png",
-            "is_tampered":
-                1,
-            "tamper_type":
-                "qr_mismatch",
-        },
-    ])
-
-    return records
 
 
 # ============================================================
-# DATASET GENERATION
+# CREATE DATASET
 # ============================================================
 
-def generate_dataset():
+def create_dataset():
+
+    if OUTPUT_DIR.exists():
+        shutil.rmtree(OUTPUT_DIR)
+
+    if ZIP_NAME.exists():
+        ZIP_NAME.unlink()
 
     OUTPUT_DIR.mkdir(
         parents=True,
-        exist_ok=True,
+        exist_ok=True
     )
 
-    all_records = []
+    validation_summary = []
 
-    print(
-        "\nGenerating connected synthetic identities..."
-    )
+    for index, person in enumerate(PEOPLE, start=1):
 
-    for i in range(1, NUM_PEOPLE + 1):
+        person_dir = OUTPUT_DIR / person["id"]
 
-        records = create_person_dataset(i)
+        aadhaar_dir = person_dir / "aadhaar"
+        passport_dir = person_dir / "passport"
+        pan_dir = person_dir / "pan"
+        images_dir = person_dir / "images"
 
-        all_records.extend(records)
+        aadhaar_dir.mkdir(parents=True)
+        passport_dir.mkdir(parents=True)
+        pan_dir.mkdir(parents=True)
+        images_dir.mkdir(parents=True)
+
+        # ---------------------------------------------
+        # Generate identifiers
+        # ---------------------------------------------
+
+        aadhaar_number = generate_aadhaar(
+            35116000000 + index * 137
+        )
+
+        passport = generate_passport(
+            person,
+            index
+        )
+
+        scenario = person.get("scenario", "clean")
+
+        # Negative samples deliberately break one or more independent signals.
+        printed_aadhaar_number = aadhaar_number
+        printed_pan = person["pan"]
+        rendered_passport = passport
+        aadhaar_qr_payload_number = aadhaar_number
+        expected_aadhaar_verhoeff = True
+        expected_qr_match = True
+        expected_mrz = True
+        expected_pan = pan_valid(person["pan"])
+        expected_tampering = False
+
+        if scenario == "aadhaar_mismatch_tampered":
+            printed_aadhaar_number = make_invalid_verhoeff_number(aadhaar_number)
+            # Keep the QR based on the original valid number: printed-vs-QR
+            # consistency must fail independently of the checksum.
+            aadhaar_qr_payload_number = aadhaar_number
+            expected_aadhaar_verhoeff = False
+            expected_qr_match = False
+            expected_tampering = True
+
+        elif scenario == "passport_mrz_and_pan_invalid":
+            rendered_passport = make_invalid_mrz(passport)
+            printed_pan = make_invalid_pan(person["pan"])
+            expected_mrz = False
+            expected_pan = False
+
+        # ---------------------------------------------
+        # Generate synthetic face image
+        # ---------------------------------------------
+
+        face_path = images_dir / "person.png"
+
+        create_person_image(
+            person,
+            face_path,
+            seed=1000 + index
+        )
+
+        # ---------------------------------------------
+        # Aadhaar QR payload
+        # ---------------------------------------------
+
+        qr_payload = {
+            "name": person["name"],
+            "dob": person["dob"],
+            "gender": person["gender"],
+            "aadhaar_number": aadhaar_qr_payload_number,
+            "synthetic": True,
+        }
+
+        # ---------------------------------------------
+        # Generate Aadhaar document image
+        # ---------------------------------------------
+
+        aadhaar_image = aadhaar_dir / "aadhaar.png"
+
+        create_aadhaar_image(
+            person,
+            printed_aadhaar_number,
+            qr_payload,
+            aadhaar_image,
+            face_path
+        )
+
+        if expected_tampering:
+            add_aadhaar_tamper_overlay(aadhaar_image)
+
+        # ---------------------------------------------
+        # Generate PAN document image
+        # ---------------------------------------------
+
+        pan_image = pan_dir / "pan.png"
+
+        create_pan_image(
+            person,
+            pan_image,
+            face_path,
+            pan_value=printed_pan
+        )
+
+        # ---------------------------------------------
+        # Generate passport document image
+        # ---------------------------------------------
+
+        passport_image = passport_dir / "passport.png"
+
+        create_passport_image(
+            person,
+            rendered_passport,
+            passport_image,
+            face_path
+        )
+
+        # ---------------------------------------------
+        # Person manifest
+        # ---------------------------------------------
+
+        person_data = {
+            "synthetic_only": True,
+            "person_id": person["id"],
+            "name": person["name"],
+            "dob": person["dob"],
+            "gender": person["gender"],
+            "nationality": person["nationality"],
+            "address": person["address"],
+            "aadhaar": aadhaar_number,
+            "passport": passport["passport_number"],
+            "pan": person["pan"],
+            "files": {
+                "face": "images/person.png",
+                "aadhaar": "aadhaar/aadhaar.png",
+                "passport": "passport/passport.png",
+                "pan": "pan/pan.png",
+            },
+        }
+
+        write_json(
+            person_dir / "person.json",
+            person_data
+        )
+
+        # ---------------------------------------------
+        # Aadhaar JSON
+        # ---------------------------------------------
+
+        aadhaar_data = {
+            "document_type": "aadhaar",
+            "synthetic_only": True,
+            "name": person["name"],
+            "aadhaar_number": printed_aadhaar_number,
+            "dob": person["dob"],
+            "gender": person["gender"],
+            "address": person["address"],
+            "qr_payload": qr_payload,
+            "image": "aadhaar.png",
+            "expected_validation": {
+                "verhoeff_checksum_pass": expected_aadhaar_verhoeff,
+                "qr_signature_valid": True,
+                "qr_field_match": expected_qr_match,
+                "field_consistency_pass": expected_qr_match,
+                "tampering_expected": expected_tampering,
+            },
+        }
+
+        write_json(
+            aadhaar_dir / "data.json",
+            aadhaar_data
+        )
+
+        # ---------------------------------------------
+        # Passport JSON
+        # ---------------------------------------------
+
+        passport_data = {
+            "document_type": "passport",
+            "synthetic_only": True,
+            "name": person["name"],
+            "passport_number": rendered_passport["passport_number"],
+            "dob": person["dob"],
+            "gender": person["gender"],
+            "nationality": "IND",
+            "mrz_line_1": rendered_passport["mrz_line_1"],
+            "mrz_line_2": rendered_passport["mrz_line_2"],
+            "image": "passport.png",
+            "expected_validation": {
+                "mrz_checksum_pass": expected_mrz,
+            },
+            "mrz_check_digits": {
+                "passport_number": passport["passport_number_check_digit"],
+                "dob": passport["dob_check_digit"],
+                "expiry": passport["expiry_check_digit"],
+                "composite": passport["composite_check_digit"],
+            },
+        }
+
+        write_json(
+            passport_dir / "data.json",
+            passport_data
+        )
+
+        # ---------------------------------------------
+        # PAN JSON
+        # ---------------------------------------------
+
+        pan_data = {
+            "document_type": "pan",
+            "synthetic_only": True,
+            "name": person["name"],
+            "pan": printed_pan,
+            "image": "pan.png",
+            "expected_validation": {
+                "pan_structure_valid": expected_pan,
+            },
+        }
+
+        write_json(
+            pan_dir / "data.json",
+            pan_data
+        )
+
+        # ---------------------------------------------
+        # Validation summary
+        # ---------------------------------------------
+
+        validation_summary.append({
+            "person_id": person["id"],
+            "name": person["name"],
+            "scenario": scenario,
+            "aadhaar": printed_aadhaar_number,
+            "aadhaar_verhoeff_valid": expected_aadhaar_verhoeff,
+            "qr_field_match_expected": expected_qr_match,
+            "tampering_expected": expected_tampering,
+            "pan": printed_pan,
+            "pan_structure_valid": expected_pan,
+            "passport": rendered_passport["passport_number"],
+            "passport_mrz_check_digits_valid": expected_mrz,
+        })
 
         print(
-            f"[{i:03d}/{NUM_PEOPLE}] "
-            f"Created person_{i:03d}"
+            f"[OK] {person['id']} "
+            f"{person['name']} "
+            f"| Aadhaar={aadhaar_number} "
+            f"| PAN={person['pan']} "
+            f"| Passport={passport['passport_number']}"
         )
 
     # ========================================================
-    # Dataset manifest
+    # README
     # ========================================================
 
-    manifest_path = (
-        OUTPUT_DIR
-        / "dataset_manifest.csv"
+    readme = """
+# PramaanSetu Synthetic Identity Dataset
+
+This dataset is synthetic test data for the PramaanSetu
+document-screening project.
+
+It contains NO real government-issued credentials.
+
+## Structure
+
+person_001/
+├── person.json
+├── images/
+│   └── person.png
+├── aadhaar/
+│   ├── data.json
+│   └── aadhaar.png
+├── passport/
+│   ├── data.json
+│   └── passport.png
+└── pan/
+    ├── data.json
+    └── pan.png
+
+## Generated images
+
+The script generates:
+
+1. A separate synthetic face image.
+2. A synthetic Aadhaar-style document.
+3. A synthetic passport-style document with MRZ.
+4. A synthetic PAN-style document.
+
+The face is deliberately an illustrated synthetic portrait,
+not a real person's photograph.
+
+## Positive and negative samples
+
+The dataset intentionally contains both clean and failing documents:
+
+- person_001 to person_003: clean documents; identifiers/checks should pass.
+- person_004: printed Aadhaar number is corrupted, QR contains the original
+  number, and a visible synthetic edit is added; checksum/QR consistency and
+  tampering checks should fail/flag.
+- person_005: passport MRZ composite check digit is corrupted and PAN has an
+  invalid structure; those validations should fail.
+
+Use the `scenario` field in `validation_summary.json` to build positive and
+negative evaluation splits.
+
+## Validation
+
+Aadhaar:
+- 12 digits
+- Verhoeff-valid
+- Synthetic QR payload contains matching fields
+
+Passport:
+- TD3-style two-line MRZ
+- ICAO 7-3-1 check digits
+- Passport number, DOB, expiry and composite check digits
+  are internally generated
+
+PAN:
+- Matches the project's structural PAN regex
+
+## QR
+
+If the qrcode package is installed, the Aadhaar image contains
+a QR code generated from the synthetic qr_payload.
+
+Install:
+
+    pip install pillow qrcode
+
+## Testing PramaanSetu
+
+Use:
+
+    person_001/aadhaar/aadhaar.png
+    person_001/passport/passport.png
+    person_001/pan/pan.png
+
+as document inputs to Module 1.
+
+Use:
+
+    person_001/images/person.png
+
+as the separate reference image for Module 4.
+
+## Important
+
+All documents and identifiers are synthetic.
+
+Do not represent them as real Aadhaar, PAN or passport
+credentials.
+"""
+
+    (OUTPUT_DIR / "README.md").write_text(
+        readme.strip(),
+        encoding="utf-8"
     )
 
-    with open(
-        manifest_path,
+    write_json(
+        OUTPUT_DIR / "validation_summary.json",
+        validation_summary
+    )
+
+    # ========================================================
+    # ZIP
+    # ========================================================
+
+    with zipfile.ZipFile(
+        ZIP_NAME,
         "w",
-        newline="",
-        encoding="utf-8",
-    ) as f:
+        zipfile.ZIP_DEFLATED
+    ) as archive:
 
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "person_id",
-                "document_type",
-                "filename",
-                "is_tampered",
-                "tamper_type",
-            ],
-        )
+        for file in OUTPUT_DIR.rglob("*"):
 
-        writer.writeheader()
+            if file.is_file():
 
-        writer.writerows(
-            all_records
-        )
+                archive.write(
+                    file,
+                    file.relative_to(
+                        OUTPUT_DIR.parent
+                    )
+                )
 
-    print("\n============================================")
-    print("CONNECTED SYNTHETIC DATASET CREATED")
-    print("============================================")
-    print(
-        f"People: {NUM_PEOPLE}"
-    )
-    print(
-        f"Documents: {len(all_records)}"
-    )
-    print(
-        f"Output: {OUTPUT_DIR.resolve()}"
-    )
-    print(
-        f"Manifest: {manifest_path.resolve()}"
-    )
-    print("============================================")
+    print()
+    print("=" * 70)
+    print("PRAMAANSETU SYNTHETIC DATASET GENERATED")
+    print("=" * 70)
+    print(f"Folder: {OUTPUT_DIR}")
+    print(f"ZIP:    {ZIP_NAME}")
+    print()
+    print("Images generated:")
+    print("  - images/person.png")
+    print("  - aadhaar/aadhaar.png")
+    print("  - passport/passport.png")
+    print("  - pan/pan.png")
 
-
-# ============================================================
-# MAIN
-# ============================================================
 
 if __name__ == "__main__":
-
-    generate_dataset()
+    create_dataset()

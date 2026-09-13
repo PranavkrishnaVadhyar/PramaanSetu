@@ -60,6 +60,7 @@ export const Sandbox: React.FC = () => {
   const [verifyAgainstAnchor, setVerifyAgainstAnchor] = useState(true);
   const [identityCorrelation, setIdentityCorrelation] = useState<IdentityCorrelationEvidence | null>(null);
   const [identityError, setIdentityError] = useState('');
+  const [anchorAadhaarNumber, setAnchorAadhaarNumber] = useState('');
   const [isEstablishingAnchor, setIsEstablishingAnchor] = useState(false);
   const [isCorrelating, setIsCorrelating] = useState(false);
   const [correlatedScanId, setCorrelatedScanId] = useState<string | null>(null);
@@ -158,9 +159,9 @@ export const Sandbox: React.FC = () => {
 
   const establishIdentityAnchor = async () => {
     if (!resultData) return;
-    const aadhaarNumber = resultData.extracted_fields.aadhaar_number?.text?.trim();
-    if (!aadhaarNumber) {
-      setIdentityError('The Aadhaar number could not be extracted, so a synthetic identity anchor cannot be established.');
+    const aadhaarNumber = anchorAadhaarNumber.trim() || resultData.extracted_fields.aadhaar_number?.text?.trim() || '';
+    if (aadhaarNumber.replace(/\D/g, '').length !== 12) {
+      setIdentityError('Enter the 12-digit synthetic Aadhaar number to establish the identity anchor.');
       return;
     }
     setIsEstablishingAnchor(true);
@@ -168,7 +169,7 @@ export const Sandbox: React.FC = () => {
     try {
       const verified = await api.verifyAadhaarIdentity(aadhaarNumber);
       if (!verified.verified || !verified.identity_id) {
-        throw new Error('Synthetic Aadhaar verification did not establish an identity anchor.');
+        throw new Error('This number is not available in the local synthetic identity provider. Check the 12 digits and try again.');
       }
       const anchor = { identityId: verified.identity_id, maskedAadhaar: maskAadhaar(aadhaarNumber) };
       setActiveAnchor(anchor);
@@ -179,6 +180,12 @@ export const Sandbox: React.FC = () => {
       setIsEstablishingAnchor(false);
     }
   };
+
+  useEffect(() => {
+    if (resultData?.document_type !== 'aadhaar') return;
+    const extracted = resultData.extracted_fields.aadhaar_number?.text?.trim() || '';
+    setAnchorAadhaarNumber(extracted);
+  }, [resultData?.document_type, resultData?.extracted_fields.aadhaar_number?.text]);
 
   const clearIdentityAnchor = () => {
     sessionStorage.removeItem(ANCHOR_STORAGE_KEY);
@@ -378,7 +385,7 @@ export const Sandbox: React.FC = () => {
               {resultData.document_type === 'aadhaar' && (
                 <section className="rounded-card border border-border bg-surface p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex gap-2.5 items-center"><Fingerprint size={19} className="text-emerald-700 dark:text-emerald-400" /><div><h2 className="text-sm font-semibold text-text-primary">Identity Anchor</h2><p className="text-[11px] text-text-secondary">Use this completed Aadhaar scan to establish a synthetic identity anchor for cross-document consistency checks.</p></div></div>
-                  {activeAnchor ? <div className="flex items-center gap-2 text-xs text-emerald-800 dark:text-emerald-300"><CheckCircle2 size={16} /> Active: <span className="font-mono">{activeAnchor.identityId}</span></div> : <button type="button" onClick={establishIdentityAnchor} disabled={isEstablishingAnchor} className="px-3 py-2 text-xs font-medium text-white bg-stone-900 dark:bg-stone-100 dark:text-stone-900 rounded-control disabled:opacity-60">{isEstablishingAnchor ? 'Establishing…' : 'Establish identity anchor'}</button>}
+                  {activeAnchor ? <div className="flex items-center gap-2 text-xs text-emerald-800 dark:text-emerald-300"><CheckCircle2 size={16} /> Active: <span className="font-mono">{activeAnchor.identityId}</span></div> : <div className="flex flex-col sm:flex-row gap-2 sm:items-center"><input value={anchorAadhaarNumber} onChange={(event) => setAnchorAadhaarNumber(event.target.value)} inputMode="numeric" maxLength={16} placeholder="Confirm 12-digit synthetic Aadhaar" aria-label="Synthetic Aadhaar number" className="w-full sm:w-52 px-3 py-2 text-xs rounded-control border border-border bg-stone-50 dark:bg-stone-900 text-text-primary placeholder:text-text-secondary" /><button type="button" onClick={establishIdentityAnchor} disabled={isEstablishingAnchor} className="shrink-0 px-3 py-2 text-xs font-medium text-white bg-stone-900 dark:bg-stone-100 dark:text-stone-900 rounded-control disabled:opacity-60">{isEstablishingAnchor ? 'Establishing…' : 'Establish identity anchor'}</button></div>}
                 </section>
               )}
 

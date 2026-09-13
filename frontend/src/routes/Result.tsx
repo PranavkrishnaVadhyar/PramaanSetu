@@ -107,7 +107,7 @@ export const Result: React.FC = () => {
         <IdentityCorrelationCard correlation={result.identity_risk.identity_correlation} />
       )}
 
-      {/* 4. LLM Narrative Audit Report with Bilingual Toggle */}
+      {/* 4.  Narrative Audit Report with Bilingual Toggle */}
       <ReportPanel report={result.report} />
 
       {/* 5. Forensic Evidence (Collapsed by Default) */}

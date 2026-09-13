@@ -6,7 +6,7 @@ export const PIPELINE_STAGES: { stage: PipelineStage; label: string; module: str
   { stage: 'tampering', label: 'Tampering Detection', module: 'Module 3', desc: 'Error Level Analysis (ELA) and forensic metadata checks' },
   { stage: 'face_verification', label: 'Face Verification', module: 'Module 4', desc: 'Biometric 1:1 face embedding match against live capture' },
   { stage: 'risk_scoring', label: 'Risk Scoring', module: 'Module 5', desc: 'Gradient boosted risk model composite score generation' },
-  { stage: 'report_generation', label: 'Report Generation', module: 'Module 6', desc: 'Bilingual LLM narrative audit report generation' },
+  { stage: 'report_generation', label: 'Report Generation', module: 'Module 6', desc: 'Bilingual LLnarrative audit report generation' },
 ];
 
 export const MOCK_HISTORY: ScanHistoryItem[] = [

@@ -104,7 +104,12 @@ async def get_scan_status(
     if scan is None:
         raise HTTPException(status_code=404, detail=f"Scan not found: {scan_id}")
 
-    current = scan.status
+    # A scan is committed as `pending` before the background pipeline gets a
+    # chance to set its first concrete stage. Clients are allowed to poll as
+    # soon as POST /api/scans returns 202, so expose that transient state as
+    # the first public stage rather than leaking an internal value that the
+    # response schema does not permit.
+    current = "ocr" if scan.status == "pending" else scan.status
     active_stages = [s.value for s in PipelineStage.active_stages()]
 
     # Compute which stages are completed based on current status

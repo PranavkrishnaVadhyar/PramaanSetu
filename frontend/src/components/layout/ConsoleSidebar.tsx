@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { PlaySquare, Code2, ShieldCheck, Cpu } from 'lucide-react';
+import { PlaySquare, Code2, BookOpen, ShieldCheck, Cpu } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
 export const ConsoleSidebar: React.FC = () => {
@@ -17,6 +17,12 @@ export const ConsoleSidebar: React.FC = () => {
       to: '/console/developer',
       label: 'Developer',
       icon: Code2,
+      end: false,
+    },
+    {
+      to: '/console/reference',
+      label: 'API Reference',
+      icon: BookOpen,
       end: false,
     },
   ];
