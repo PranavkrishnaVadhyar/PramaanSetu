@@ -12,7 +12,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional, Tuple
 
+import os
+
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user_flexible
@@ -44,6 +47,11 @@ router = APIRouter(prefix="/api/scans", tags=["scans"])
 logger = get_logger("api.scans")
 _settings = get_settings()
 
+def _require_owned_scan(scan: object, user: User) -> None:
+    """Avoid confirming another tenant's scan exists."""
+    if getattr(scan, "user_id", None) != user.id:
+        raise HTTPException(status_code=404, detail="Scan not found.")
+
 
 # ── POST /api/scans ───────────────────────────────────────────────────────────
 
@@ -68,10 +76,10 @@ async def submit_scan(
         raise HTTPException(status_code=422, detail=f"Invalid document_type: {document_type}")
 
     # Save uploaded files
-    doc_path = await save_upload(document_image, _settings.storage_path, "uploads")
+    doc_path = await save_upload(document_image, _settings.storage_path, "uploads", _settings.max_upload_bytes, _settings.max_image_pixels)
     live_path: str | None = None
     if live_capture_image and live_capture_image.filename:
-        live_path = await save_upload(live_capture_image, _settings.storage_path, "uploads")
+        live_path = await save_upload(live_capture_image, _settings.storage_path, "uploads", _settings.max_upload_bytes, _settings.max_image_pixels)
 
     # Create DB record with user attribution
     scan = await crud.create_scan(
@@ -99,10 +107,12 @@ async def submit_scan(
 async def get_scan_status(
     scan_id: str,
     db: AsyncSession = Depends(get_db),
+    auth: Tuple[User, Optional[ApiKey]] = Depends(get_current_user_flexible),
 ) -> ScanStatusResponse:
     scan = await crud.get_scan(db, scan_id)
     if scan is None:
         raise HTTPException(status_code=404, detail=f"Scan not found: {scan_id}")
+    _require_owned_scan(scan, auth[0])
 
     # A scan is committed as `pending` before the background pipeline gets a
     # chance to set its first concrete stage. Clients are allowed to poll as
@@ -136,10 +146,12 @@ async def get_scan_status(
 async def get_scan_result(
     scan_id: str,
     db: AsyncSession = Depends(get_db),
+    auth: Tuple[User, Optional[ApiKey]] = Depends(get_current_user_flexible),
 ) -> ScanResultResponse:
     scan = await crud.get_scan(db, scan_id)
     if scan is None:
         raise HTTPException(status_code=404, detail=f"Scan not found: {scan_id}")
+    _require_owned_scan(scan, auth[0])
 
     if scan.status not in ("done", "failed"):
         raise HTTPException(
@@ -172,7 +184,7 @@ async def get_scan_result(
         ela_score=float(tamp.get("ela_score", 0)),
         flagged_regions=tamp.get("flagged_regions", []),
         metadata_anomalies=tamp.get("metadata_anomalies", []),
-        ela_heatmap_url=tamp.get("ela_heatmap_url"),
+        ela_heatmap_url=f"/api/scans/{scan_id}/evidence/ela" if tamp.get("ela_heatmap_url") else None,
     )
 
     face: FaceVerificationResult | None = None
@@ -250,10 +262,12 @@ async def submit_officer_action(
     scan_id: str,
     payload: OfficerActionPayload,
     db: AsyncSession = Depends(get_db),
+    auth: Tuple[User, Optional[ApiKey]] = Depends(get_current_user_flexible),
 ) -> ActionResponse:
     scan = await crud.get_scan(db, scan_id)
     if scan is None:
         raise HTTPException(status_code=404, detail=f"Scan not found: {scan_id}")
+    _require_owned_scan(scan, auth[0])
 
     await crud.record_officer_action(db, scan_id, payload.action)
     await db.commit()
@@ -263,3 +277,21 @@ async def submit_officer_action(
         ok=True,
         message=f"Action '{payload.action}' recorded for scan {scan_id}",
     )
+
+
+@router.get("/{scan_id}/evidence/ela")
+async def get_ela_evidence(
+    scan_id: str,
+    db: AsyncSession = Depends(get_db),
+    auth: Tuple[User, Optional[ApiKey]] = Depends(get_current_user_flexible),
+) -> FileResponse:
+    """Return forensic evidence only to the user who owns its scan."""
+    scan = await crud.get_scan(db, scan_id)
+    if scan is None:
+        raise HTTPException(status_code=404, detail="Scan not found.")
+    _require_owned_scan(scan, auth[0])
+    evidence_path = os.path.abspath(os.path.join(_settings.storage_path, "evidence", f"{scan_id}_ela.png"))
+    evidence_root = os.path.abspath(os.path.join(_settings.storage_path, "evidence"))
+    if not evidence_path.startswith(evidence_root + os.sep) or not os.path.isfile(evidence_path):
+        raise HTTPException(status_code=404, detail="ELA evidence not found.")
+    return FileResponse(evidence_path, media_type="image/png", headers={"Cache-Control": "private, no-store"})

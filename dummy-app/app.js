@@ -68,7 +68,7 @@ async function getCompletedResult(scanId) {
 }
 function bool(value) { return value === null || value === undefined ? 'Not applicable' : value ? 'Passed' : 'Failed'; }
 function list(target, values) { $(target).innerHTML = Object.entries(values).map(([key, value]) => `<div><dt>${key.replaceAll('_', ' ')}</dt><dd>${value}</dd></div>`).join(''); }
-function renderResult(result) {
+async function renderResult(result) {
   sessionStorage.setItem(RESULT_KEY, JSON.stringify(result));
   sessionStorage.removeItem(ACTIVE_SCAN_KEY);
   $('progress-card').classList.add('hidden');
@@ -78,7 +78,15 @@ function renderResult(result) {
   list('validation-list', Object.fromEntries(Object.entries(result.validation).map(([key, value]) => [key, bool(value)])));
   list('forensic-list', { ela_score: result.tampering.ela_score, flagged_regions: result.tampering.flagged_regions.join(', ') || 'None', metadata_anomalies: result.tampering.metadata_anomalies.join(', ') || 'None' });
   $('report-text').textContent = result.report.text_en; $('raw-response').textContent = JSON.stringify(result, null, 2);
-  const heatmap = $('heatmap'); if (result.tampering.ela_heatmap_url) { heatmap.src = new URL(result.tampering.ela_heatmap_url, `${baseUrl()}/`).href; heatmap.classList.remove('hidden'); } else { heatmap.classList.add('hidden'); }
+  const heatmap = $('heatmap');
+  if (result.tampering.ela_heatmap_url) {
+    try {
+      const response = await fetch(new URL(result.tampering.ela_heatmap_url, `${baseUrl()}/`).href, { headers: headers() });
+      if (!response.ok) throw new Error('Evidence unavailable');
+      heatmap.src = URL.createObjectURL(await response.blob());
+      heatmap.classList.remove('hidden');
+    } catch { heatmap.classList.add('hidden'); }
+  } else { heatmap.classList.add('hidden'); }
 }
 
 $('scan-form').addEventListener('submit', async (event) => {
@@ -91,7 +99,7 @@ $('scan-form').addEventListener('submit', async (event) => {
   try {
     const created = await api('/api/scans', { method: 'POST', body: form });
     sessionStorage.setItem(ACTIVE_SCAN_KEY, created.scan_id);
-    renderResult(await poll(created.scan_id));
+    await renderResult(await poll(created.scan_id));
   }
   catch (error) {
     if (error instanceof ApiError && error.status === 401) {
@@ -116,7 +124,7 @@ try {
   const cachedResult = sessionStorage.getItem(RESULT_KEY);
   const activeScanId = sessionStorage.getItem(ACTIVE_SCAN_KEY);
   if (cachedResult) {
-    renderResult(JSON.parse(cachedResult));
+    void renderResult(JSON.parse(cachedResult));
   } else if (activeScanId && (session.apiKey || session.token)) {
     void poll(activeScanId).then(renderResult).catch((error) => showError(error.message));
   }

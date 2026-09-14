@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScanResultResponse } from '../../api/types';
 import { ModuleTag } from '../shared/ModuleTag';
 import { formatPercentage } from '../../utils/formatters';
@@ -28,6 +28,20 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'ocr' | 'ela' | 'face' | 'raw'>('ocr');
+  const [heatmapSrc, setHeatmapSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    const path = tampering.ela_heatmap_url;
+    if (!path) { setHeatmapSrc(null); return; }
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+    const token = localStorage.getItem('pramaansetu_token');
+    void fetch(resolveApiUrl(path), { headers: token ? { Authorization: `Bearer ${token}` } : {}, signal: controller.signal })
+      .then((response) => response.ok ? response.blob() : Promise.reject(new Error('Evidence unavailable')))
+      .then((blob) => { objectUrl = URL.createObjectURL(blob); setHeatmapSrc(objectUrl); })
+      .catch(() => setHeatmapSrc(null));
+    return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [tampering.ela_heatmap_url]);
 
   return (
     <div className="bg-surface rounded-card border border-border overflow-hidden shadow-xs">
@@ -175,10 +189,10 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({
               </div>
 
               <div className="p-4 bg-stone-950 rounded-control flex flex-col items-center justify-center text-stone-200">
-                {tampering.ela_heatmap_url ? (
+                {heatmapSrc ? (
                   <div className="w-full flex flex-col items-center">
                     <img
-                      src={resolveApiUrl(tampering.ela_heatmap_url)}
+                      src={heatmapSrc}
                       alt="Error Level Analysis Heatmap"
                       className="max-h-72 object-contain border border-stone-800 rounded"
                     />

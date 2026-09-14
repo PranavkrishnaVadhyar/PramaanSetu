@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     hf_api_token: str = ""
     storage_path: str = "./storage"
     risk_model_path: str = "./app/modules/module5_risk/model.joblib"
+    cors_origins: str = "http://localhost:5173,http://localhost:8081"
+    max_upload_bytes: int = 10 * 1024 * 1024
+    max_image_pixels: int = 20_000_000
 
     # OCR: local PP-OCRv5 recognition model. Keep this directory provisioned
     # during deployment; production scans must not download model files.

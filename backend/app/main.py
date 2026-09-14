@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.config import get_settings
@@ -58,16 +58,46 @@ app = FastAPI(
 # Allow frontend to communicate with API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Static file serving for evidence heatmaps (/evidence/{scan_id}_ela.png)
+_rate_windows: dict[tuple[str, str], list[float]] = {}
+
+@app.middleware("http")
+async def security_controls(request: Request, call_next):
+    """Small dependency-free abuse guard; use Redis/shared limits in production."""
+    import time
+    path = request.url.path
+    if request.method != "OPTIONS":
+        category, limit, window = (
+            ("auth", 5, 900) if path.startswith("/api/auth/") else
+            ("upload", 10, 60) if path == "/api/scans" and request.method == "POST" else
+            ("poll", 120, 60) if path.endswith("/status") else
+            ("identity", 20, 3600) if path == "/api/identity/aadhaar/verify" else
+            ("general", 300, 60)
+        )
+        client = request.client.host if request.client else "unknown"
+        key = (category, client)
+        now = time.monotonic()
+        entries = [stamp for stamp in _rate_windows.get(key, []) if stamp > now - window]
+        if len(entries) >= limit:
+            return JSONResponse({"detail": "Rate limit exceeded. Try again later."}, status_code=429)
+        entries.append(now)
+        _rate_windows[key] = entries
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(self), microphone=(), geolocation=()"
+    return response
+
+# Evidence is served by an authenticated scan route, never as a public static
+# directory. Keep the directory private to the application process.
 evidence_dir = os.path.join(settings.storage_path, "evidence")
 os.makedirs(evidence_dir, exist_ok=True)
-app.mount("/evidence", StaticFiles(directory=evidence_dir), name="evidence")
 
 # Register API routes
 app.include_router(scans_router)

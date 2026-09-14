@@ -66,11 +66,15 @@ Returns `202` with `{ "scan_id": "uuid" }`. Processing continues in the backgrou
 
 ### `GET /api/scans/{scan_id}/status`
 
-Poll this endpoint until `current_stage` is `done` or `failed`. Pipeline stages are `ocr`, `validation`, `tampering`, `face_verification`, `risk_scoring`, `report_generation`, `done`, and `failed`.
+Requires JWT or API-key authentication and only returns a scan owned by the caller. Poll this endpoint until `current_stage` is `done` or `failed`. Pipeline stages are `ocr`, `validation`, `tampering`, `face_verification`, `risk_scoring`, `report_generation`, `done`, and `failed`.
 
 ### `GET /api/scans/{scan_id}/result`
 
-Returns the structured screening result after processing. It returns `425 Too Early` while the pipeline is still running. The response includes extracted fields, validation checks, tamper evidence, optional face-verification outcome, identity risk, risk score/band, and English/Hindi report text.
+Requires JWT or API-key authentication and only returns a scan owned by the caller. Returns the structured screening result after processing. It returns `425 Too Early` while the pipeline is still running. The response includes extracted fields, validation checks, tamper evidence, optional face-verification outcome, identity risk, risk score/band, and English/Hindi report text.
+
+### `GET /api/scans/{scan_id}/evidence/ela`
+
+Requires JWT or API-key authentication and returns the ELA heatmap only to the scan owner. Clients must request the image with their authorization header; it is intentionally not served as a public static file.
 
 ### `GET /api/scans`
 

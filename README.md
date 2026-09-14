@@ -524,6 +524,9 @@ Do not hardcode credentials or API keys into the client.
 * JWTs and API keys protect authenticated actions.
 * API keys are returned in full only when created.
 * Identity anchors and scans are tenant-scoped.
+* Scan status, results, reviewer actions, and ELA evidence enforce per-user ownership checks.
+* Uploads are size/dimension limited, decoded and normalized server-side, and accept only non-animated JPEG, PNG, or WebP images.
+* Browser origins are allow-listed through `CORS_ORIGINS`; authentication, uploads, polling, and synthetic verification have baseline rate limits.
 * Aadhaar-like identifiers should be masked when displayed.
 * Generated files, uploads, model weights, `.env` files, build output, and local IDE files are excluded through `.gitignore`.
 * Synthetic identity records must not be interpreted as real government records.
